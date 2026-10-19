@@ -28,6 +28,16 @@ export const authFail = ({ ts, ip = IP_A, route = 'login', account = (n++ % 20).
   auth: { route, status: 401, accountHash: account },
 });
 
+let m = 0;
+export const roomMiss = ({ ts, ip = IP_A, code = (m++).toString(16).padStart(16, 'c') } = {}) => ({
+  ts,
+  type: 'room.join.invalid',
+  env: 'staging',
+  inst: 'test-1',
+  src: { ipHash: ip, client: 'unknown', authed: false },
+  room: { codeHash: code, kind: 'ephemeral', via: 'http' },
+});
+
 /** A runner over the real rules that records decisions instead of acting. */
 export const recordingRunner = (config = CONFIG) => {
   const decisions = [];
