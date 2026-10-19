@@ -16,9 +16,10 @@
     "stack:up": "docker compose up -d --build",
     "stack:down": "docker compose down",
     "seed": "node --env-file=.env scripts/seedCypherfy.js",
+    "demo:reset": "node --env-file=.env scripts/demoReset.js",
     "hooks:sync": "bash scripts/syncHooks.sh",
     "tail": "node scripts/tailEvents.js",
-    "test": "npm test --workspaces --if-present",
+    "test": "npm test --workspaces --if-present && node --test \"scripts/*.test.js\"",
     "dashboard:dev": "npm run dev -w frontend",
     "dashboard:build": "npm run build -w frontend"
   },
