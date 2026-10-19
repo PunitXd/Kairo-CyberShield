@@ -82,6 +82,7 @@ services:
     read_only: true
     tmpfs: ["/tmp"]
     user: "node"
+    healthcheck: { test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7070/api/health"], interval: 5s, timeout: 3s, retries: 10 }
     depends_on: { redis: { condition: service_healthy }, mongo: { condition: service_healthy } }
     restart: unless-stopped
 
