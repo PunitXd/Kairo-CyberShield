@@ -56,3 +56,9 @@ export const getEventSample = (limit = 20) => request('GET', '/api/events/sample
 
 /** Turn the global kill switch on or off → { on, since, changed }. */
 export const setKillSwitch = (on) => request('POST', '/api/killswitch', { body: { on } });
+
+/** Stored GitHub Actions runs, newest first → { items, sync }. */
+export const getPipelineRuns = (limit = 20) => request('GET', '/api/pipeline/runs', { params: { limit } });
+
+/** One run → { run, sync }. */
+export const getPipelineRun = (id) => request('GET', `/api/pipeline/runs/${encodeURIComponent(id)}`);

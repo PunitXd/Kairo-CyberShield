@@ -101,6 +101,7 @@ export const useOverviewData = (connection) => {
         refreshKpis();
       }),
       onConsoleEvent('action.applied', refreshKpis),
+      onConsoleEvent('pipeline.run', refreshKpis), // Last pipeline tile
     ];
     return () => {
       offs.forEach((off) => off());

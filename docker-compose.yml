@@ -78,6 +78,9 @@ services:
       KAIRO_STALE_EVENT_MS: ${KAIRO_STALE_EVENT_MS:-300000}
       CYPHERFY_HEALTH_URL: http://cypherfy-backend:8000/api/v1/health
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      GITHUB_REPO: ${GITHUB_REPO:-}                    # pipeline poller; read-only
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}                  # fine-grained PAT, Actions: read; optional (pass/fail only without it)
+      GITHUB_POLL_MS: ${GITHUB_POLL_MS:-15000}
     ports: ["127.0.0.1:7070:7070"]                     # operator console: localhost only
     read_only: true
     tmpfs: ["/tmp"]

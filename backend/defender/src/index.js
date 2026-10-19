@@ -19,6 +19,7 @@ import { getSystemStatus } from './services/health.service.js';
 import { createRealtime } from './services/realtime.service.js';
 import { createUnblockService } from './services/unblock.service.js';
 import { createKillSwitchService } from './services/killswitch.service.js';
+import { createGithubPoller } from './pollers/github.poller.js';
 import { createApp } from './app.js';
 import { rules } from './rules/index.js';
 
@@ -83,17 +84,35 @@ const boot = async () => {
   }
   const unblock = createUnblockService({ redis, mongo, bus, log, hasher });
   const killSwitch = createKillSwitchService({ redis, mongo, bus, log, hasher });
-  const deps = { redis, mongo, env: env.env, log, getConsumerStats: () => consumer.stats, getRules, unblock, killSwitch, getConfig: configStore.get };
+  // GitHub Actions poller (ARCH §4.4); off when GITHUB_REPO is unset.
+  const pipelinePoller = env.github.repo
+    ? createGithubPoller({ repo: env.github.repo, token: env.github.token, pollMs: env.github.pollMs, mongo, bus, log })
+    : null;
+  if (!pipelinePoller) log.warn({ msg: 'pipeline.poller_off', reason: 'GITHUB_REPO is not set' });
+  const deps = {
+    redis,
+    mongo,
+    env: env.env,
+    log,
+    getConsumerStats: () => consumer.stats,
+    getRules,
+    unblock,
+    killSwitch,
+    getConfig: configStore.get,
+    getPipelineSync: pipelinePoller ? pipelinePoller.getSync : null,
+  };
   const httpServer = createServer(createApp(deps));
   const realtime = createRealtime({ httpServer, bus, log, getStatus: () => getSystemStatus(deps) });
   const blockWatcher = createBlockWatcher({ redis, bus, log });
   await blockWatcher.start();
   await new Promise((resolve) => httpServer.listen(env.port, env.bindHost, resolve));
+  await pipelinePoller?.start();
 
   const shutdown = async (signal) => {
     log.info({ msg: 'defender.stopping', signal });
     consumer.stop();
     blockWatcher.stop();
+    pipelinePoller?.stop();
     await realtime.close(); // also closes the HTTP server
     await Promise.allSettled([redis.quit(), consumerRedis.quit(), mongo.client.close()]);
     process.exit(0);

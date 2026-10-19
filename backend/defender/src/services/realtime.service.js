@@ -4,6 +4,7 @@
 //   incident.created / incident.updated from the remediation service
 //   action.applied                      from the remediation service
 //   block.added / block.removed         remediation (added), block watcher (expired)
+//   pipeline.run / pipeline.sync        GitHub poller (a run changed / GitHub reachable or not)
 // The handshake gets the same localhost + same-origin check as the REST API.
 
 import { Server } from 'socket.io';
@@ -12,7 +13,15 @@ import { checkLocalRequest } from '../middlewares/localOnly.middleware.js';
 import { statusFingerprint } from './health.service.js';
 
 export const CONSOLE_NAMESPACE = '/console';
-export const FORWARDED_EVENTS = ['incident.created', 'incident.updated', 'action.applied', 'block.added', 'block.removed'];
+export const FORWARDED_EVENTS = [
+  'incident.created',
+  'incident.updated',
+  'action.applied',
+  'block.added',
+  'block.removed',
+  'pipeline.run',
+  'pipeline.sync',
+];
 const STATUS_POLL_MS = 2000;
 
 export const createRealtime = ({ httpServer, bus, getStatus, log, statusPollMs = STATUS_POLL_MS }) => {

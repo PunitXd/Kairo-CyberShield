@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isLocalMongo, readEnv } from '../src/defender.config.js';
+import { isLocalMongo, readEnv, readGithubEnv } from '../src/defender.config.js';
 import { CONFIG } from './helpers.js';
 
 test('staging refuses to start against a non-local Mongo (ARCH §11.1)', () => {
@@ -24,4 +24,17 @@ test('isLocalMongo accepts the Compose service, loopback and private ranges only
   for (const bad of ['mongodb://172.32.0.1/k', 'mongodb://mongo.example.com/k', 'not a uri']) {
     assert.equal(isLocalMongo(bad), false, bad);
   }
+});
+
+test('readGithubEnv: repo optional but validated, token optional, sane poll interval', () => {
+  assert.deepEqual(readGithubEnv({}), { repo: null, token: null, pollMs: 15_000 });
+  assert.deepEqual(readGithubEnv({ GITHUB_REPO: 'PunitXd/CypherFy', GITHUB_TOKEN: 't', GITHUB_POLL_MS: '30000' }), {
+    repo: 'PunitXd/CypherFy',
+    token: 't',
+    pollMs: 30_000,
+  });
+  assert.equal(readGithubEnv({ GITHUB_POLL_MS: '100' }).pollMs, 15_000); // too fast for GitHub's limits
+  assert.throws(() => readGithubEnv({ GITHUB_REPO: 'https://github.com/x/y' }), /owner\/name/);
+  assert.throws(() => readGithubEnv({ GITHUB_REPO: '../../etc' }), /owner\/name/);
+  assert.throws(() => readGithubEnv({ GITHUB_REPO: '../etc' }), /owner\/name/);
 });

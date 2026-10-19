@@ -4,6 +4,7 @@
 import { MongoClient } from 'mongodb';
 
 const DAYS_30 = 30 * 24 * 3600;
+const DAYS_90 = 90 * 24 * 3600;
 const DAYS_365 = 365 * 24 * 3600;
 
 const connectDB = async (uri) => {
@@ -15,6 +16,9 @@ const connectDB = async (uri) => {
   // Every operator mutation, before and after. Append-only in code: the
   // Defender only ever calls insertOne on it (ARCH §8.2).
   const auditLog = db.collection('audit_log');
+  // GitHub Actions runs (ARCH §8.2), _id = GitHub run id. Kept across
+  // demo resets so the Pipeline screen works without venue internet.
+  const pipelineRuns = db.collection('pipeline_runs');
 
   await Promise.all([
     incidents.createIndex({ status: 1, detectedAt: -1 }),
@@ -26,9 +30,11 @@ const connectDB = async (uri) => {
     actions.createIndex({ requestedAt: 1 }, { expireAfterSeconds: DAYS_30 }),
     auditLog.createIndex({ at: -1 }),
     auditLog.createIndex({ at: 1 }, { expireAfterSeconds: DAYS_365, name: 'at_ttl' }),
+    pipelineRuns.createIndex({ startedAt: -1 }),
+    pipelineRuns.createIndex({ syncedAt: 1 }, { expireAfterSeconds: DAYS_90 }),
   ]);
 
-  return { client, db, incidents, actions, auditLog };
+  return { client, db, incidents, actions, auditLog, pipelineRuns };
 };
 
 export default connectDB;

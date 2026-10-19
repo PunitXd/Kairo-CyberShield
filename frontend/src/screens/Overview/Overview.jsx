@@ -17,6 +17,7 @@ import { useOverviewData } from '../../hooks/useOverviewData.js';
 import { useFeedAnnouncer } from '../../hooks/useFeedAnnouncer.js';
 import { deriveActionState } from '../../utils/incidentState.js';
 import { formatLatency } from '../../utils/formatDuration.js';
+import { runKpiHint, runStateLabel } from '../../utils/pipelineState.js';
 
 const enforcingRules = (status) => (status?.rules ?? []).filter((r) => r.mode === 'enforce').map((r) => r.id);
 
@@ -55,6 +56,7 @@ export default function Overview() {
     }
   };
 
+  const lastPipeline = overview?.lastPipeline ?? null;
   const tileState = (value) => (!loaded ? 'loading' : stale ? 'stale' : value === null || value === undefined ? 'empty' : 'live');
   const rules = enforcingRules(status);
 
@@ -93,10 +95,10 @@ export default function Overview() {
         />
         <KpiTile
           label="Last pipeline"
-          value="—"
-          hint="Pipeline results arrive on Oct 22"
-          to="/pipeline"
-          state={!loaded ? 'loading' : stale ? 'stale' : 'empty'}
+          value={lastPipeline ? runStateLabel({ status: lastPipeline.status }) : '—'}
+          hint={runKpiHint(lastPipeline)}
+          to={lastPipeline ? `/pipeline/${lastPipeline.id}` : '/pipeline'}
+          state={tileState(lastPipeline)}
           asOf={dataAt}
         />
       </div>

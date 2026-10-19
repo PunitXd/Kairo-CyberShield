@@ -63,10 +63,11 @@ const fakeCollection = (docs) => ({
   findOne: async (filter = {}) => docs.find((d) => matchesFilter(d, filter)) ?? null,
 });
 
-export const fakeMongo = ({ incidents = [], actions = [], down = false } = {}) => ({
+export const fakeMongo = ({ incidents = [], actions = [], pipelineRuns = [], down = false } = {}) => ({
   db: { command: () => (down ? Promise.reject(new Error('mongo down')) : Promise.resolve({ ok: 1 })) },
   incidents: fakeCollection(incidents),
   actions: fakeCollection(actions),
+  pipelineRuns: fakeCollection(pipelineRuns),
 });
 
 /** GET with arbitrary headers; resolves { status, headers, body (parsed JSON or text) }. */

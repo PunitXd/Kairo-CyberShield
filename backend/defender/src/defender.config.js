@@ -40,6 +40,24 @@ export const isLocalMongo = (uri) => {
   return Boolean(hosts?.length) && hosts.every((h) => LOCAL_HOST.test(h));
 };
 
+const GITHUB_REPO = /^[\w.-]{1,100}\/[\w.-]{1,100}$/;
+
+/**
+ * GitHub poller settings (ARCH §4.4). No GITHUB_REPO → poller off. The token
+ * is optional (without it the poller shows pass/fail only) and is never logged.
+ */
+export const readGithubEnv = (env = process.env) => {
+  const repo = env.GITHUB_REPO || null;
+  const dotsOnly = repo?.split('/').some((s) => /^\.+$/.test(s)); // "../x" would walk the API path
+  if (repo && (!GITHUB_REPO.test(repo) || dotsOnly)) throw new Error('GITHUB_REPO must look like owner/name');
+  const pollMs = Number(env.GITHUB_POLL_MS);
+  return {
+    repo,
+    token: env.GITHUB_TOKEN || null,
+    pollMs: Number.isFinite(pollMs) && pollMs >= 5000 ? pollMs : 15_000,
+  };
+};
+
 export const readEnv = (env = process.env) => {
   const cfg = {
     env: env.KAIRO_ENV,
@@ -55,6 +73,7 @@ export const readEnv = (env = process.env) => {
     bindHost: env.KAIRO_BIND_HOST || '127.0.0.1',
     // Optional here: only used to hash the operator's IP in the audit log.
     hashSecret: env.KAIRO_HASH_SECRET || null,
+    github: readGithubEnv(env),
   };
   const missing = ['env', 'redisUrl', 'mongoUri'].filter((k) => !cfg[k]);
   if (missing.length) throw new Error(`missing environment: ${missing.join(', ')}`);

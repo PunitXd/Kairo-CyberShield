@@ -49,7 +49,7 @@ export default function App() {
               <Route path="incidents/:id" element={<IncidentDrawer />} />
             </Route>
             <Route path="/blocks" element={<Blocklist />} />
-            <Route path="/pipeline" element={<Pipeline />} />
+            <Route path="/pipeline/:runId?" element={<Pipeline />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
