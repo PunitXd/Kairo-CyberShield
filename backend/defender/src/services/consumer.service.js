@@ -11,7 +11,7 @@ import { CONSUMER_GROUP, CONSUMER_NAME, KEYS } from '../defender.constant.js';
 const BATCH = 200;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export const createConsumer = ({ redis, runner, log, getStaleMs, now = Date.now }) => {
+export const createConsumer = ({ redis, runner, log, getStaleMs, now = Date.now, retryMs = 1000 }) => {
   let running = false;
   const stats = { processed: 0, invalid: 0, stale: 0, lastEventTs: null, lastEventAtByInst: {} };
 
@@ -74,13 +74,26 @@ export const createConsumer = ({ redis, runner, log, getStaleMs, now = Date.now 
         pendingFrom = entries.at(-1)[0];
       }
 
+      // Redis outage (ARCH §12): keep retrying every second, but log the
+      // outage once (redis.down) and its end once (redis.up), not every retry.
+      let downSince = null;
       while (running) {
         try {
           const entries = await read('>', 1000);
+          if (downSince) {
+            log.info({ msg: 'redis.up', downForMs: now() - downSince });
+            downSince = null;
+          }
           if (entries.length) await processEntries(entries);
         } catch (err) {
-          log.error({ msg: 'redis.consume_failed', error: err?.message?.slice(0, 200) });
-          await sleep(1000);
+          const message = String(err?.message ?? '');
+          if (!downSince) {
+            downSince = now();
+            log.error({ msg: 'redis.down', error: message.slice(0, 200) });
+          }
+          // Redis came back without our group (data lost): recreate it and carry on.
+          if (message.includes('NOGROUP')) await ensureGroup().catch(() => {});
+          await sleep(retryMs);
         }
       }
     },

@@ -31,7 +31,7 @@ const headline = (incident, action) => {
   return `${who}: ${why} (${action.reason === 'manually' ? 'unblocked by the operator' : 'expired'})`;
 };
 
-function UnblockButton({ scope, subject, disabled, onUnblocked }) {
+function UnblockButton({ scope, subject, blockedReason, onUnblocked }) {
   const { state, error, unblock, label } = useUnblock({ scope, subject, onUnblocked });
   const busy = state === 'unblocking';
   return (
@@ -40,10 +40,10 @@ function UnblockButton({ scope, subject, disabled, onUnblocked }) {
         type="button"
         className="btn btn--primary"
         onClick={unblock}
-        disabled={busy || disabled}
+        disabled={busy || Boolean(blockedReason)}
         aria-busy={busy || undefined}
         aria-label={`Unblock ${label}`}
-        title={disabled ? 'The Defender is unreachable; actions are paused' : undefined}
+        title={blockedReason ?? undefined}
       >
         {busy ? 'Unblocking…' : state === 'failed' ? 'Retry unblock' : 'Unblock'}
       </button>
@@ -59,7 +59,7 @@ function UnblockButton({ scope, subject, disabled, onUnblocked }) {
 export default function IncidentDrawer() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { incidents, blocks, now, stale, killSwitch, removeBlocksFor } = useOutletContext();
+  const { incidents, blocks, now, blockedReason, killSwitch, removeBlocksFor } = useOutletContext();
   const { detail, error, loading, reload } = useIncidentDetail(id);
 
   // Header renders instantly from the feed row; the detail fills in the rest.
@@ -98,7 +98,7 @@ export default function IncidentDrawer() {
 
       {active && (
         <div className="drawer__actions">
-          <UnblockButton scope={action.scope} subject={incident.subject} disabled={stale} onUnblocked={(b) => removeBlocksFor(b.scope, b.subject)} />
+          <UnblockButton scope={action.scope} subject={incident.subject} blockedReason={blockedReason} onUnblocked={(b) => removeBlocksFor(b.scope, b.subject)} />
         </div>
       )}
 

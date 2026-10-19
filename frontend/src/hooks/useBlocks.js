@@ -3,7 +3,7 @@
 // Loaded over REST, kept live from block.added / block.removed and the
 // incident pushes, and reloaded after a reconnect.
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getBlocks, getIncidents, getOverview } from '../services/api.service.js';
 import { onConsoleEvent } from '../services/realtime.service.js';
@@ -11,7 +11,7 @@ import { blockKey } from '../utils/incidentState.js';
 
 const DAY_MS = 24 * 3600_000;
 
-export const useBlocks = (connection) => {
+export const useBlocks = (connection, redis) => {
   const [blocks, setBlocks] = useState(() => new Map());
   const [incidents, setIncidents] = useState(() => new Map());
   const [cap, setCap] = useState(null);
@@ -35,6 +35,13 @@ export const useBlocks = (connection) => {
   useEffect(() => {
     if (connection === 'live') load();
   }, [connection, load]);
+
+  // Redis back after an outage: reload, since blocks may have expired or come back from AOF.
+  const lastRedis = useRef(redis);
+  useEffect(() => {
+    if (lastRedis.current === 'down' && redis === 'ok' && connection === 'live') load();
+    lastRedis.current = redis;
+  }, [redis, connection, load]);
 
   useEffect(() => {
     const upsertIncident = (incident) => setIncidents((m) => new Map(m).set(incident._id, incident));

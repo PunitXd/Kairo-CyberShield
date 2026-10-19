@@ -12,6 +12,7 @@ import { useConsole } from '../../hooks/useConsole.js';
 import { useNow } from '../../hooks/useNow.js';
 import { summarizeBlocks } from '../../utils/summarizeBlocks.js';
 import { formatClock } from '../../utils/formatTime.js';
+import { actionBlockedReason, isRedisDown, isStale } from '../../utils/systemState.js';
 
 const FILTERS = [
   { value: null, label: 'All' },
@@ -20,11 +21,13 @@ const FILTERS = [
 ];
 
 export default function Blocklist() {
-  const { connection, status } = useConsole();
-  const stale = connection !== 'live';
+  const { connection, connectionSince, status } = useConsole();
+  const stale = isStale(connection);
+  const redisDown = isRedisDown(connection, status);
+  const blockedReason = actionBlockedReason(connection, status);
   const killSwitch = Boolean(status?.killSwitch);
   const now = useNow(stale);
-  const { blocks, incidents, cap, loaded, error, lastExpiryAt, removeBlocksFor } = useBlocks(connection);
+  const { blocks, incidents, cap, loaded, error, lastExpiryAt, removeBlocksFor } = useBlocks(connection, status?.redis);
   const [scope, setScope] = useState(null);
 
   const active = blocks.filter((b) => b.expiresAt > now);
@@ -39,7 +42,8 @@ export default function Blocklist() {
 
       <div className="blocklist__bar">
         <p className="blocklist__summary" aria-live="off">
-          {loaded ? summary.text : '—'}
+          {redisDown ? 'Unknown while Redis is unreachable' : loaded ? summary.text : '—'}
+          {stale && <span className="stale-stamp">as of {formatClock(connectionSince)}</span>}
           {killSwitch && <span className="blocklist__held"> · held back by the kill switch</span>}
         </p>
         <div className="segmented" role="group" aria-label="Filter by scope">
@@ -58,7 +62,9 @@ export default function Blocklist() {
       </div>
 
       <div className="panel">
-        {error && !loaded ? (
+        {redisDown ? (
+          <EmptyState hint="They can't be read while Redis is down, and none of them is being enforced.">Blocks hidden: Redis is unreachable.</EmptyState>
+        ) : error && !loaded ? (
           <EmptyState hint={error.message}>Could not load active blocks.</EmptyState>
         ) : !loaded ? (
           <div className="skeleton skeleton--block" aria-label="Loading active blocks" />
@@ -90,7 +96,7 @@ export default function Blocklist() {
                     block={b}
                     incident={incidents.get(b.incidentId)}
                     now={now}
-                    disabled={stale}
+                    blockedReason={blockedReason}
                     killSwitch={killSwitch}
                     onUnblocked={(x) => removeBlocksFor(x.scope, x.subject)}
                   />

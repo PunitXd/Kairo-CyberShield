@@ -3,14 +3,14 @@
 //
 // States: active, under 60 s, unblocking (button busy), removed once the
 // Defender confirms (never optimistically), failed (inline error + Retry).
-// While the Defender is unreachable the button is disabled with the reason.
+// While the Defender or Redis is unreachable the button is disabled with the reason.
 
 import ActionPill from './ActionPill.jsx';
 import Countdown from './Countdown.jsx';
 import HashValue from './HashValue.jsx';
 import { useUnblock } from '../hooks/useUnblock.js';
 
-export default function BlockCard({ block, now, disabled = false, killSwitch = false, onUnblocked }) {
+export default function BlockCard({ block, now, blockedReason = null, killSwitch = false, onUnblocked }) {
   const { state, error, unblock, label } = useUnblock({ scope: block.scope, subject: block.subject, onUnblocked });
   const busy = state === 'unblocking';
 
@@ -31,10 +31,10 @@ export default function BlockCard({ block, now, disabled = false, killSwitch = f
           type="button"
           className="btn btn--secondary"
           onClick={unblock}
-          disabled={busy || disabled}
+          disabled={busy || Boolean(blockedReason)}
           aria-busy={busy || undefined}
           aria-label={`Unblock ${label}`}
-          title={disabled ? 'The Defender is unreachable; actions are paused' : undefined}
+          title={blockedReason ?? undefined}
         >
           {busy ? 'Unblocking…' : state === 'failed' ? 'Retry' : 'Unblock'}
         </button>

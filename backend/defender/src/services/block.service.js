@@ -72,15 +72,18 @@ export const createBlockWatcher = ({ redis, bus, log, intervalMs = WATCH_INTERVA
   bus.on('block.added', (item) => known.set(itemKey(item), item));
   bus.on('block.removed', (item) => known.delete(itemKey(item)));
 
+  let failing = false; // warn once per Redis outage, not on every tick
   const tick = async () => {
     try {
       const current = new Map((await listBlocks(redis)).map((i) => [itemKey(i), i]));
+      failing = false;
       for (const [key, item] of known) {
         if (!current.has(key)) bus.emit('block.removed', { ...item, ttlMs: 0, reason: 'expired' });
       }
       for (const [key, item] of current) known.set(key, item);
     } catch (err) {
-      log?.warn({ msg: 'blocks.watch_failed', error: err?.message?.slice(0, 200) });
+      if (!failing) log?.warn({ msg: 'blocks.watch_failed', error: err?.message?.slice(0, 200) });
+      failing = true;
     }
   };
 

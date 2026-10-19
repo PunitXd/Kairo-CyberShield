@@ -18,15 +18,20 @@ import { useFeedAnnouncer } from '../../hooks/useFeedAnnouncer.js';
 import { deriveActionState } from '../../utils/incidentState.js';
 import { formatLatency } from '../../utils/formatDuration.js';
 import { runKpiHint, runStateLabel } from '../../utils/pipelineState.js';
+import { actionBlockedReason, isRedisDown, isStale } from '../../utils/systemState.js';
+import { formatClock } from '../../utils/formatTime.js';
 
 const enforcingRules = (status) => (status?.rules ?? []).filter((r) => r.mode === 'enforce').map((r) => r.id);
 
 export default function Overview() {
-  const { connection, status } = useConsole();
-  const stale = connection !== 'live';
+  const { connection, connectionSince, status } = useConsole();
+  const stale = isStale(connection); // ≥ 10 s without the Defender: freeze and hatch
+  const redisDown = isRedisDown(connection, status);
+  const blockedReason = actionBlockedReason(connection, status);
+  const asOf = `as of ${formatClock(connectionSince)}`;
   const killSwitch = Boolean(status?.killSwitch);
   const now = useNow(stale);
-  const { incidents, blocks, overview, loaded, error, dataAt, freshIds, removeBlocksFor } = useOverviewData(connection);
+  const { incidents, blocks, overview, loaded, error, dataAt, freshIds, removeBlocksFor } = useOverviewData(connection, status?.redis);
 
   const activeBlocks = blocks.filter((b) => b.expiresAt > now).sort((a, b) => a.expiresAt - b.expiresAt);
   const hardBlocks = activeBlocks.filter((b) => b.level === 'block');
@@ -69,29 +74,31 @@ export default function Overview() {
       <div className="kpi-strip">
         <KpiTile
           label="Active blocks"
-          value={String(hardBlocks.length)}
+          value={redisDown ? '—' : String(hardBlocks.length)}
           hint={
-            activeBlocks.length
-              ? `${blockedSources} source${blockedSources === 1 ? '' : 's'} blocked${throttles ? ` · ${throttles} throttled` : ''}`
-              : 'Nothing blocked right now'
+            redisDown
+              ? 'Unknown: Redis is unreachable'
+              : activeBlocks.length
+                ? `${blockedSources} source${blockedSources === 1 ? '' : 's'} blocked${throttles ? ` · ${throttles} throttled` : ''}`
+                : 'Nothing blocked right now'
           }
           to="/blocks"
-          state={tileState(hardBlocks.length)}
-          asOf={dataAt}
+          state={redisDown && !stale ? 'empty' : tileState(hardBlocks.length)}
+          asOf={connectionSince}
         />
         <KpiTile
           label="Detect p95"
           value={formatLatency(overview?.ttdP95Ms)}
           hint={overview?.ttdP95Ms == null ? 'No detections in 24 h' : 'Trigger event → incident, 24 h'}
           state={tileState(overview?.ttdP95Ms)}
-          asOf={dataAt}
+          asOf={connectionSince}
         />
         <KpiTile
           label="Remediate p95"
           value={formatLatency(overview?.ttrP95Ms)}
           hint={overview?.ttrP95Ms == null ? 'No actions in 24 h' : 'Trigger event → action applied, 24 h'}
           state={tileState(overview?.ttrP95Ms)}
-          asOf={dataAt}
+          asOf={connectionSince}
         />
         <KpiTile
           label="Last pipeline"
@@ -99,7 +106,7 @@ export default function Overview() {
           hint={runKpiHint(lastPipeline)}
           to={lastPipeline ? `/pipeline/${lastPipeline.id}` : '/pipeline'}
           state={tileState(lastPipeline)}
-          asOf={dataAt}
+          asOf={connectionSince}
         />
       </div>
 
@@ -107,7 +114,9 @@ export default function Overview() {
         <section className="panel" aria-labelledby="feed-title">
           <h2 id="feed-title" className="panel__title">
             Incident feed
+            {stale && <span className="stale-stamp">{asOf}</span>}
           </h2>
+          {redisDown && <p className="panel__note">Feed paused: no events can arrive while Redis is unreachable.</p>}
           {error && !loaded ? (
             <EmptyState hint={error.message}>Could not load incidents.</EmptyState>
           ) : loaded && incidents.length === 0 ? (
@@ -154,8 +163,11 @@ export default function Overview() {
         <aside className="panel" aria-labelledby="rail-title">
           <h2 id="rail-title" className="panel__title">
             Active blocks
+            {stale && <span className="stale-stamp">{asOf}</span>}
           </h2>
-          {!loaded ? (
+          {redisDown ? (
+            <EmptyState hint="They can't be read while Redis is down, and none of them is being enforced.">Blocks hidden: Redis is unreachable.</EmptyState>
+          ) : !loaded ? (
             <EmptyState>Waiting for the Defender…</EmptyState>
           ) : activeBlocks.length === 0 ? (
             <EmptyState>Nothing blocked right now.</EmptyState>
@@ -166,7 +178,7 @@ export default function Overview() {
                   key={`${block.level}:${block.scope}:${block.subject}`}
                   block={block}
                   now={now}
-                  disabled={stale}
+                  blockedReason={blockedReason}
                   killSwitch={killSwitch}
                   onUnblocked={(b) => removeBlocksFor(b.scope, b.subject)}
                 />
@@ -176,7 +188,7 @@ export default function Overview() {
         </aside>
       </div>
 
-      <Outlet context={{ incidents, blocks, now, stale, killSwitch, removeBlocksFor }} />
+      <Outlet context={{ incidents, blocks, now, blockedReason, killSwitch, removeBlocksFor }} />
 
       <div role="status" aria-live="polite" className="visually-hidden">
         {announcement}

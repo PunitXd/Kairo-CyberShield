@@ -46,8 +46,16 @@ const boot = async () => {
 
   const redis = new Redis(env.redisUrl);
   const consumerRedis = new Redis(env.redisUrl); // XREADGROUP BLOCK holds its connection
+  // ioredis emits an error on every reconnect attempt; log the first one per outage only.
   for (const [name, client] of [['redis', redis], ['redis.consumer', consumerRedis]]) {
-    client.on('error', (err) => log.warn({ msg: `${name}.error`, error: err.message }));
+    let reported = false;
+    client.on('error', (err) => {
+      if (!reported) log.warn({ msg: `${name}.error`, error: err.message });
+      reported = true;
+    });
+    client.on('ready', () => {
+      reported = false;
+    });
   }
 
   const mongo = await connectDB(env.mongoUri);

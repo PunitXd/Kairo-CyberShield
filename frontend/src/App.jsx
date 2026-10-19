@@ -10,6 +10,7 @@ import ToastHost from './components/ToastHost.jsx';
 import Banner from './components/Banner.jsx';
 import KillSwitchControl from './components/KillSwitchControl.jsx';
 import { formatClock } from './utils/formatTime.js';
+import { actionBlockedReason, isStale, systemBanner } from './utils/systemState.js';
 import Overview from './screens/Overview/Overview.jsx';
 import IncidentDrawer from './screens/Overview/IncidentDrawer.jsx';
 import Blocklist from './screens/Blocklist/Blocklist.jsx';
@@ -27,6 +28,8 @@ function NotFound() {
 
 export default function App() {
   const consoleState = useConsole();
+  // BRIEF §8: Defender unreachable ≥ 10 s or Redis unreachable. Neither can be dismissed.
+  const band = systemBanner(consoleState, formatClock);
   return (
     <>
       <a href="#main" className="skip-link">
@@ -35,11 +38,12 @@ export default function App() {
       <div className="shell">
         <TopBar console={consoleState} />
         <SideNav />
-        <main id="main" className="shell__main" tabIndex={-1}>
+        <main id="main" className={`shell__main${isStale(consoleState.connection) ? ' shell__main--stale' : ''}`} tabIndex={-1}>
+          {band && <Banner tone={band.tone}>{band.text}</Banner>}
           {consoleState.status?.killSwitch && (
             <Banner
               tone="critical"
-              action={<KillSwitchControl status={consoleState.status} disabled={consoleState.connection !== 'live'} variant="banner" />}
+              action={<KillSwitchControl status={consoleState.status} blockedReason={actionBlockedReason(consoleState.connection, consoleState.status)} variant="banner" />}
             >
               Kill switch on{consoleState.status.killSwitchSince ? ` since ${formatClock(consoleState.status.killSwitchSince)}` : ''}. Kairo is detecting but not acting.
             </Banner>

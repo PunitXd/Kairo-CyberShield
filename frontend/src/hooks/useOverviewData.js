@@ -16,7 +16,7 @@ const DAY_MS = 24 * 3600_000;
 const FRESH_MS = 2000; // new-row highlight (BRIEF §3 motion)
 const KPI_REFRESH_MS = 500;
 
-export const useOverviewData = (connection) => {
+export const useOverviewData = (connection, redis) => {
   const [incidents, setIncidents] = useState([]);
   const [blocks, setBlocks] = useState(() => new Map());
   const [overview, setOverview] = useState(null);
@@ -30,11 +30,11 @@ export const useOverviewData = (connection) => {
     try {
       const [inc, blk, ov] = await Promise.all([
         getIncidents({ since: Date.now() - DAY_MS, limit: 50 }),
-        getBlocks(),
+        getBlocks().catch(() => null), // 503 while Redis is down: incidents still load
         getOverview(),
       ]);
       setIncidents(inc.items);
-      setBlocks(new Map(blk.items.map((b) => [blockKey(b), b])));
+      if (blk) setBlocks(new Map(blk.items.map((b) => [blockKey(b), b])));
       setOverview(ov);
       setError(null);
       setLoaded(true);
@@ -48,6 +48,13 @@ export const useOverviewData = (connection) => {
   useEffect(() => {
     if (connection === 'live') load();
   }, [connection, load]);
+
+  // Redis back after an outage: the blocks may have changed (expired, or restored from AOF).
+  const lastRedis = useRef(redis);
+  useEffect(() => {
+    if (lastRedis.current === 'down' && redis === 'ok' && connection === 'live') load();
+    lastRedis.current = redis;
+  }, [redis, connection, load]);
 
   useEffect(() => {
     const refreshKpis = () => {

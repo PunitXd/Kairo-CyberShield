@@ -18,6 +18,7 @@ import { usePipeline } from '../../hooks/usePipeline.js';
 import { getPipelineRun } from '../../services/api.service.js';
 import { findingsNote, howToFix, syncMessage, triggerLabel } from '../../utils/pipelineState.js';
 import { formatClock, formatRunDuration } from '../../utils/formatTime.js';
+import { isStale } from '../../utils/systemState.js';
 
 const WORKFLOW = '.github/workflows/kairo-shield.yml';
 
@@ -66,8 +67,7 @@ function RunDetail({ run }) {
 
 export default function Pipeline() {
   const { connection } = useConsole();
-  const stale = connection !== 'live';
-  const now = useNow(stale);
+  const now = useNow(isStale(connection));
   const { runId } = useParams();
   const { runs, sync, loaded, error } = usePipeline(connection);
   const [extra, setExtra] = useState(null); // a run linked directly but older than the list

@@ -10,7 +10,7 @@ import HashValue from './HashValue.jsx';
 import { useUnblock } from '../hooks/useUnblock.js';
 import { formatClock } from '../utils/formatTime.js';
 
-export default function BlockRow({ block, incident, now, disabled = false, killSwitch = false, onUnblocked }) {
+export default function BlockRow({ block, incident, now, blockedReason = null, killSwitch = false, onUnblocked }) {
   const { state, error, unblock, label } = useUnblock({ scope: block.scope, subject: block.subject, onUnblocked });
   const busy = state === 'unblocking';
 
@@ -50,10 +50,10 @@ export default function BlockRow({ block, incident, now, disabled = false, killS
           type="button"
           className="btn btn--secondary"
           onClick={unblock}
-          disabled={busy || disabled}
+          disabled={busy || Boolean(blockedReason)}
           aria-busy={busy || undefined}
           aria-label={`Unblock ${label}`}
-          title={disabled ? 'The Defender is unreachable; actions are paused' : undefined}
+          title={blockedReason ?? undefined}
         >
           {busy ? 'Unblocking…' : state === 'failed' ? 'Retry' : 'Unblock'}
         </button>

@@ -8,7 +8,7 @@ import { useCallback, useRef, useState } from 'react';
 import ConfirmPopover from './ConfirmPopover.jsx';
 import { setKillSwitch } from '../services/api.service.js';
 
-export default function KillSwitchControl({ status, disabled = false, variant = 'topbar' }) {
+export default function KillSwitchControl({ status, blockedReason = null, variant = 'topbar' }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -43,10 +43,10 @@ export default function KillSwitchControl({ status, disabled = false, variant = 
         ref={triggerRef}
         className={`btn ${on ? 'btn--primary' : 'btn--danger'}`}
         onClick={() => setOpen((v) => !v)}
-        disabled={disabled || !status}
+        disabled={Boolean(blockedReason) || !status}
         aria-haspopup="dialog"
         aria-expanded={open}
-        title={disabled ? 'The Defender is unreachable' : undefined}
+        title={blockedReason ?? undefined}
       >
         {variant === 'banner' ? 'Turn off' : label}
       </button>

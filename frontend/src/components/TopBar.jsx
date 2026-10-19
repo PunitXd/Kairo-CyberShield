@@ -8,6 +8,7 @@ import EnvChip from './EnvChip.jsx';
 import ConnectionStatus from './ConnectionStatus.jsx';
 import MetadataBadge from './MetadataBadge.jsx';
 import KillSwitchControl from './KillSwitchControl.jsx';
+import { actionBlockedReason, isStale } from '../utils/systemState.js';
 
 export default function TopBar({ console: consoleState }) {
   return (
@@ -17,13 +18,13 @@ export default function TopBar({ console: consoleState }) {
       </Link>
       <EnvChip
         status={consoleState.status}
-        stale={consoleState.connection !== 'live'}
+        stale={isStale(consoleState.connection)}
         statusAt={consoleState.statusAt}
       />
       <ConnectionStatus {...consoleState} />
       <span className="topbar__spacer" />
       <MetadataBadge />
-      <KillSwitchControl status={consoleState.status} disabled={consoleState.connection !== 'live'} />
+      <KillSwitchControl status={consoleState.status} blockedReason={actionBlockedReason(consoleState.connection, consoleState.status)} />
     </header>
   );
 }

@@ -1197,3 +1197,42 @@ details[open] > .job__summary::after {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---- Failure states (BRIEF §8) ---- */
+
+.banner--warning {
+  background: rgba(224, 179, 65, 0.14);
+  border-bottom-color: var(--sev-medium);
+  color: var(--text-1);
+}
+.banner--warning .banner__text::before {
+  content: '◔ ';
+  color: var(--sev-medium); /* shape + words, not colour alone */
+}
+/* Two bands at once (e.g. Redis down while the kill switch is on) sit flush. */
+.banner + .banner {
+  margin-top: calc(-1 * var(--space-6));
+}
+
+/* Defender unreachable ≥ 10 s: every value on screen is the last known one. */
+.shell__main--stale .panel,
+.shell__main--stale .kpi {
+  background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(139, 150, 165, 0.08) 6px 12px);
+}
+.shell__main--stale .countdown,
+.shell__main--stale .kpi__value {
+  color: var(--text-2);
+}
+.stale-stamp {
+  margin-left: var(--space-2);
+  font-size: var(--type-label);
+  font-weight: 500;
+  color: var(--text-3);
+}
+.panel__note {
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-left: 3px solid var(--sev-critical);
+  background: var(--bg);
+  color: var(--text-1);
+}
