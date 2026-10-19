@@ -5,6 +5,7 @@ import { EventEmitter } from 'node:events';
 import { createServer } from 'node:http';
 
 import Redis from 'ioredis';
+import { createHasher } from 'kairo-schema';
 
 import { createConfigStore, readEnv } from './defender.config.js';
 import { createLogger } from './utils/logger.js';
@@ -16,6 +17,7 @@ import { createRemediation } from './services/remediation.service.js';
 import { createBlockWatcher } from './services/block.service.js';
 import { getSystemStatus } from './services/health.service.js';
 import { createRealtime } from './services/realtime.service.js';
+import { createUnblockService } from './services/unblock.service.js';
 import { createApp } from './app.js';
 import { rules } from './rules/index.js';
 
@@ -72,7 +74,14 @@ const boot = async () => {
     const cfg = configStore.get();
     return rules.map((r) => ({ id: r.id, mode: cfg.rules[r.id]?.mode ?? 'off' }));
   };
-  const deps = { redis, mongo, env: env.env, log, getConsumerStats: () => consumer.stats, getRules };
+  let hasher = null;
+  try {
+    hasher = env.hashSecret ? createHasher(env.hashSecret) : null;
+  } catch {
+    log.warn({ msg: 'audit.no_hasher', reason: 'KAIRO_HASH_SECRET missing or short; operator IPs are not recorded' });
+  }
+  const unblock = createUnblockService({ redis, mongo, bus, log, hasher });
+  const deps = { redis, mongo, env: env.env, log, getConsumerStats: () => consumer.stats, getRules, unblock };
   const httpServer = createServer(createApp(deps));
   const realtime = createRealtime({ httpServer, bus, log, getStatus: () => getSystemStatus(deps) });
   const blockWatcher = createBlockWatcher({ redis, bus, log });

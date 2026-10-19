@@ -19,7 +19,7 @@ export default function Overview() {
   const { connection, status } = useConsole();
   const stale = connection !== 'live';
   const now = useNow(stale);
-  const { incidents, blocks, overview, loaded, error, dataAt, freshIds } = useOverviewData(connection);
+  const { incidents, blocks, overview, loaded, error, dataAt, freshIds, removeBlocksFor } = useOverviewData(connection);
 
   const activeBlocks = blocks.filter((b) => b.expiresAt > now).sort((a, b) => a.expiresAt - b.expiresAt);
   const hardBlocks = activeBlocks.filter((b) => b.level === 'block');
@@ -128,7 +128,13 @@ export default function Overview() {
           ) : (
             <ul className="rail__list">
               {activeBlocks.map((block) => (
-                <BlockCard key={`${block.level}:${block.scope}:${block.subject}`} block={block} now={now} />
+                <BlockCard
+                  key={`${block.level}:${block.scope}:${block.subject}`}
+                  block={block}
+                  now={now}
+                  disabled={stale}
+                  onUnblocked={(b) => removeBlocksFor(b.scope, b.subject)}
+                />
               ))}
             </ul>
           )}

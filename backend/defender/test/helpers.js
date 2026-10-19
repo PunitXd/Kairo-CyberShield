@@ -71,10 +71,12 @@ export const fakeRedis = (clock) => {
     if (!zsets.has(key)) zsets.set(key, new Map());
     return zsets.get(key);
   };
-  return {
+  const api = {
     kv,
     zsets,
     get: async (key) => live(key)?.value ?? null,
+    del: async (...keys) => keys.filter((k) => live(k) && kv.delete(k)).length,
+    zrem: async (key, member) => (zset(key).delete(member) ? 1 : 0),
     exists: async (key) => (live(key) ? 1 : 0),
     set: async (key, value, ...opts) => {
       if (opts.includes('NX') && live(key)) return null;
@@ -111,6 +113,31 @@ export const fakeRedis = (clock) => {
     },
     zcard: async (key) => zset(key).size,
   };
+  // pipeline() / multi(): queue chained calls, run them in order on exec(),
+  // resolve to ioredis's [[err, result], ...] shape.
+  const batch = () => {
+    const ops = [];
+    const chain = new Proxy(
+      {},
+      {
+        get: (_t, name) =>
+          name === 'exec'
+            ? async () => {
+                const out = [];
+                for (const [fn, args] of ops) out.push([null, await api[fn](...args)]);
+                return out;
+              }
+            : (...args) => {
+                ops.push([name, args]);
+                return chain;
+              },
+      }
+    );
+    return chain;
+  };
+  api.pipeline = batch;
+  api.multi = batch;
+  return api;
 };
 
 export const silentLog = { info() {}, warn() {}, error() {}, fatal() {} };

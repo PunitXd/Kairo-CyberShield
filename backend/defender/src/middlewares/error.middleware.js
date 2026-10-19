@@ -20,6 +20,14 @@ export const errorHandler = (err, req, res, _next) => {
     const fields = err.issues.map((i) => i.path.join('.') || '(root)').slice(0, 5);
     return res.status(400).json({ error: { code: 'INVALID_QUERY', message: `Invalid parameter: ${fields.join(', ')}` } });
   }
+  // express.json() errors: a client mistake, not a server fault (messages are
+  // ours, never the parser's, which can echo the body).
+  if (err?.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: { code: 'MALFORMED_BODY', message: 'Request body is not valid JSON' } });
+  }
+  if (err?.type === 'entity.too.large') {
+    return res.status(413).json({ error: { code: 'PAYLOAD_TOO_LARGE', message: 'Request body is too large' } });
+  }
   req.app.locals.kairo?.log?.error({ msg: 'api.error', method: req.method, path: req.path, error: err?.message?.slice(0, 200) });
   return res.status(500).json({ error: { code: 'INTERNAL', message: 'Internal error' } });
 };

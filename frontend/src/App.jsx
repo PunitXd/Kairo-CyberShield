@@ -6,6 +6,7 @@ import { Route, Routes } from 'react-router';
 import TopBar from './components/TopBar.jsx';
 import SideNav from './components/SideNav.jsx';
 import EmptyState from './components/EmptyState.jsx';
+import ToastHost from './components/ToastHost.jsx';
 import Overview from './screens/Overview/Overview.jsx';
 import Blocklist from './screens/Blocklist/Blocklist.jsx';
 import Pipeline from './screens/Pipeline/Pipeline.jsx';
@@ -40,6 +41,7 @@ export default function App() {
           </Routes>
         </main>
       </div>
+      <ToastHost />
     </>
   );
 }

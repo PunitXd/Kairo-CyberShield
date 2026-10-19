@@ -109,5 +109,15 @@ export const useOverviewData = (connection) => {
     };
   }, []);
 
-  return { incidents, blocks: [...blocks.values()], overview, loaded, error, dataAt, freshIds };
+  // After a confirmed unblock: drop every key for that source and scope right
+  // away (block.removed also arrives over the socket; this covers a slow one).
+  const removeBlocksFor = useCallback((scope, subject) => {
+    setBlocks((m) => {
+      const next = new Map(m);
+      for (const [key, b] of next) if (b.scope === scope && b.subject === subject) next.delete(key);
+      return next;
+    });
+  }, []);
+
+  return { incidents, blocks: [...blocks.values()], overview, loaded, error, dataAt, freshIds, removeBlocksFor };
 };

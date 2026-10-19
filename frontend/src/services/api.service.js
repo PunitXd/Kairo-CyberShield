@@ -10,25 +10,37 @@ export class ApiRequestError extends Error {
   }
 }
 
-const getJson = async (path, params = {}) => {
+const request = async (method, path, { params = {}, body } = {}) => {
   const url = new URL(path, window.location.origin);
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, value);
   }
+  const init = { method, headers: { accept: 'application/json' } };
+  if (body !== undefined) {
+    init.headers['content-type'] = 'application/json';
+    init.body = JSON.stringify(body);
+  }
   let res;
   try {
-    res = await fetch(url, { headers: { accept: 'application/json' } });
+    res = await fetch(url, init);
   } catch {
     throw new ApiRequestError(0, 'NETWORK', 'Cannot reach the Defender');
   }
-  const body = await res.json().catch(() => null);
+  const data = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new ApiRequestError(res.status, body?.error?.code ?? `HTTP_${res.status}`, body?.error?.message ?? res.statusText);
+    throw new ApiRequestError(res.status, data?.error?.code ?? `HTTP_${res.status}`, data?.error?.message ?? res.statusText);
   }
-  return body;
+  return data;
 };
 
-export const getHealth = () => getJson('/api/health');
-export const getOverview = () => getJson('/api/overview');
-export const getIncidents = (params) => getJson('/api/incidents', params);
-export const getBlocks = (params) => getJson('/api/blocks', params);
+export const getHealth = () => request('GET', '/api/health');
+export const getOverview = () => request('GET', '/api/overview');
+export const getIncidents = (params) => request('GET', '/api/incidents', { params });
+export const getBlocks = (params) => request('GET', '/api/blocks', { params });
+
+/** Lift every block and throttle on this scope for this source → { undoToken, undoExpiresAt, removed }. */
+export const deleteBlock = (scope, subject) =>
+  request('DELETE', `/api/blocks/${encodeURIComponent(scope)}/${encodeURIComponent(subject)}`);
+
+/** Restore an unblock within its 10 s window → { restored }; 410 UNDO_EXPIRED after that. */
+export const undoUnblock = (undoToken) => request('POST', '/api/blocks/undo', { body: { undoToken } });

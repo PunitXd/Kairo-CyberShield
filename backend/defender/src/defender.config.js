@@ -53,6 +53,8 @@ export const readEnv = (env = process.env) => {
     // reachable through the published port, which Compose binds to the host's
     // 127.0.0.1 only, so the console is still never on the LAN.
     bindHost: env.KAIRO_BIND_HOST || '127.0.0.1',
+    // Optional here: only used to hash the operator's IP in the audit log.
+    hashSecret: env.KAIRO_HASH_SECRET || null,
   };
   const missing = ['env', 'redisUrl', 'mongoUri'].filter((k) => !cfg[k]);
   if (missing.length) throw new Error(`missing environment: ${missing.join(', ')}`);

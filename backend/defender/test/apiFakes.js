@@ -68,9 +68,12 @@ export const fakeMongo = ({ incidents = [], actions = [], down = false } = {}) =
 });
 
 /** GET with arbitrary headers; resolves { status, headers, body (parsed JSON or text) }. */
-export const rawGet = (port, path, headers = {}) =>
+export const rawGet = (port, path, headers = {}) => rawRequest(port, 'GET', path, { headers });
+
+/** Any method, arbitrary headers, optional string body. */
+export const rawRequest = (port, method, path, { headers = {}, body } = {}) =>
   new Promise((resolve, reject) => {
-    const req = request({ host: '127.0.0.1', port, path, method: 'GET', headers: { host: `127.0.0.1:${port}`, ...headers } }, (res) => {
+    const req = request({ host: '127.0.0.1', port, path, method, headers: { host: `127.0.0.1:${port}`, ...headers } }, (res) => {
       let data = '';
       res.on('data', (c) => (data += c));
       res.on('end', () => {
@@ -84,6 +87,7 @@ export const rawGet = (port, path, headers = {}) =>
       });
     });
     req.on('error', reject);
+    if (body !== undefined) req.write(body);
     req.end();
   });
 

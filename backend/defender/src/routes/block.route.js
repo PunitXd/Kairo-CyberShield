@@ -2,10 +2,12 @@
 
 import { Router } from 'express';
 
-import { getBlocks } from '../controllers/block.controller.js';
+import { deleteBlock, getBlocks, undoUnblock } from '../controllers/block.controller.js';
 
 const router = Router();
 
 router.get('/', getBlocks);
+router.post('/undo', undoUnblock);
+router.delete('/:scope/:subject', deleteBlock);
 
 export default router;

@@ -24,6 +24,9 @@ export const createApp = (deps) => {
   app.locals.kairo = deps;
 
   app.use(localOnly);
+  // JSON bodies only, and tiny: a cross-site form can't send JSON without a
+  // CORS preflight, which this server never answers.
+  app.use('/api', express.json({ limit: '1kb' }));
   app.use('/api', (_req, res, next) => {
     res.set('Cache-Control', 'no-store');
     res.set('X-Content-Type-Options', 'nosniff');

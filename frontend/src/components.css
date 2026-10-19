@@ -336,3 +336,67 @@
     box-shadow: inset 3px 0 0 var(--accent); /* static 2 s marker instead of the fade */
   }
 }
+
+/* ---- BlockCard failed state ---- */
+
+.block-card--failed {
+  border-color: var(--act-failed);
+}
+.block-card__error {
+  margin: 0;
+  font-size: var(--type-label);
+  color: var(--act-failed);
+}
+
+/* ---- Toast: bottom-left, floats over content (the one shadow) ---- */
+
+.toast-host {
+  position: fixed;
+  left: var(--space-4);
+  bottom: var(--space-4);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-width: min(480px, calc(100vw - 2 * var(--space-4)));
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
+}
+.toast--error {
+  border-color: var(--act-failed);
+}
+.toast__message {
+  flex: 1;
+}
+.toast__action {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.toast__action:hover {
+  background: var(--accent-16);
+}
+.toast__close {
+  border: none;
+  background: none;
+  color: var(--text-3);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.toast__close:hover {
+  color: var(--text-1);
+}
