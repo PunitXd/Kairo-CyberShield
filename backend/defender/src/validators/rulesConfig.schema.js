@@ -1,6 +1,6 @@
 // Schema for defender/config/rules.json (ARCH §6.2). Strict: a typo in a key
-// fails the load instead of being silently ignored, and only Demo MVP rules
-// are configurable.
+// fails the load instead of being silently ignored, and only built rules are
+// configurable.
 
 import { z } from 'zod';
 
@@ -8,6 +8,7 @@ const HOUR_MS = 3_600_000;
 
 const zPosInt = z.number().int().positive();
 const zMode = z.enum(['enforce', 'shadow', 'off']);
+const zEventName = z.string().regex(/^[A-Za-z][A-Za-z0-9_:.-]{0,31}$/);
 
 export const rulesConfigSchema = z.strictObject({
   version: zPosInt,
@@ -28,5 +29,22 @@ export const rulesConfigSchema = z.strictObject({
       softFiringsWindowMs: zPosInt,
     }),
     R2a: z.strictObject({ mode: zMode, threshold: zPosInt, windowMs: zPosInt }),
+    R3a: z.strictObject({
+      mode: zMode,
+      threshold: zPosInt,
+      windowMs: zPosInt,
+      signalWeight: z.record(zEventName, z.number().min(0).max(1)), // WebRTC signalling counts less
+      maxPerSec: zPosInt.max(100),
+      throttleMs: zPosInt.max(600_000),
+    }),
+    R3b: z.strictObject({
+      mode: zMode,
+      threshold: zPosInt,
+      windowMs: zPosInt,
+      softFiringsThreshold: zPosInt,
+      softFiringsWindowMs: zPosInt,
+    }),
+    R3c: z.strictObject({ mode: zMode, threshold: zPosInt, windowMs: zPosInt, ttlMs: zPosInt, reconnectCollapseMs: zPosInt }),
+    R3d: z.strictObject({ mode: zMode, threshold: zPosInt, windowMs: zPosInt }),
   }),
 });

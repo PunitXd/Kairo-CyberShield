@@ -20,6 +20,7 @@ import { createRealtime } from './services/realtime.service.js';
 import { createUnblockService } from './services/unblock.service.js';
 import { createKillSwitchService } from './services/killswitch.service.js';
 import { createGithubPoller } from './pollers/github.poller.js';
+import { createAckService } from './services/ack.service.js';
 import { createApp } from './app.js';
 import { rules } from './rules/index.js';
 
@@ -72,9 +73,11 @@ const boot = async () => {
     onDecision: (d) => remediation.handle({ ...d, rules }),
     log,
   });
+  const acks = createAckService({ mongo, bus, log });
   const consumer = createConsumer({
     redis: consumerRedis,
-    runner,
+    // kairo.ack answers a command action; every other event goes to the rules.
+    runner: { handle: (event) => (event.type === 'kairo.ack' ? acks.handle(event) : runner.handle(event)) },
     log,
     getStaleMs: () => env.staleEventMs ?? configStore.get().global.staleEventMs,
   });

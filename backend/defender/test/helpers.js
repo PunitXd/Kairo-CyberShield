@@ -38,6 +38,26 @@ export const roomMiss = ({ ts, ip = IP_A, code = (m++).toString(16).padStart(16,
   room: { codeHash: code, kind: 'ephemeral', via: 'http' },
 });
 
+const onSocket = (type, { ts, ip = IP_A, socketId = 'sockA', userHash, sessionKey }) => ({
+  ts,
+  type,
+  env: 'staging',
+  inst: 'test-1',
+  src: { ipHash: ip, client: 'web', authed: Boolean(userHash), socketId, ...(userHash ? { userHash } : {}), ...(sessionKey ? { sessionKey } : {}) },
+});
+
+/** One socket.rate summary (one second of packets from one socket). */
+export const socketRate = ({ counts = { send_message: 10 }, ...rest }) => ({
+  ...onSocket('socket.rate', rest),
+  sock: { counts, total: Object.values(counts).reduce((a, b) => a + b, 0), windowMs: 1000 },
+});
+export const socketConnect = (opts) => onSocket('socket.connect', opts);
+export const badPayload = ({ event = 'send_message', ...rest }) => ({ ...onSocket('socket.invalid_payload', rest), sock: { event } });
+export const socketRoomMiss = ({ code = (m++).toString(16).padStart(16, 'c'), ...rest }) => ({
+  ...onSocket('room.join.invalid', rest),
+  room: { codeHash: code, kind: 'ephemeral', via: 'socket', error: 'ROOM_NOT_FOUND' },
+});
+
 /** A runner over the real rules that records decisions instead of acting. */
 export const recordingRunner = (config = CONFIG) => {
   const decisions = [];
@@ -112,6 +132,11 @@ export const fakeRedis = (clock) => {
       return removed;
     },
     zcard: async (key) => zset(key).size,
+    published: [],
+    publish: async (channel, message) => {
+      api.published.push([channel, JSON.parse(message)]);
+      return 1;
+    },
   };
   // pipeline() / multi(): queue chained calls, run them in order on exec(),
   // resolve to ioredis's [[err, result], ...] shape.

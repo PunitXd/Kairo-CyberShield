@@ -3,9 +3,12 @@
 //   1. Incident: one open incident per (family, subject), found through
 //      kairo:inc:open:{family}:{subject}; severity only ever goes up, so the
 //      R1 incident updates in place from medium (throttle) to high (block).
-//   2. Per action: safeguards in order, then the TTL (fixed or ladder).
+//   2. Per action: safeguards in order, then the TTL (fixed or ladder; none
+//      for a disconnect, which must never burn a ladder strike).
 //   3. Apply through Redis FIRST, then record in Mongo, so a Mongo outage
 //      never delays or prevents protection. One `action` log line each (§14.1).
+//      Socket actions are commands to the hooks: `sent` here, `applied` when
+//      the hooks' kairo.ack arrives (ack.service.js).
 //   4. Publish to the in-process bus for the console (ARCH §9.3):
 //      incident.created/updated, action.applied, block.added.
 //
@@ -18,12 +21,18 @@ import { checkSafeguards, computeTtl } from './safeguard.service.js';
 import { toBlockItem } from './block.service.js';
 import { blockAction } from '../actions/block.action.js';
 import { throttleAction } from '../actions/throttle.action.js';
+import { disconnectAction } from '../actions/disconnect.action.js';
+import { socketThrottleAction } from '../actions/socketThrottle.action.js';
 
 const SEVERITY_RANK = { info: 0, low: 1, medium: 2, high: 3, critical: 4 };
 const ENFORCED = new Set(['applied', 'already_active']);
 const FP_STORM_TTL_MS = 10 * 60_000;
 
-export const defaultHandlers = { throttle: throttleAction, block: blockAction };
+export const defaultHandlers = { throttle: throttleAction, block: blockAction, disconnect: disconnectAction, socketThrottle: socketThrottleAction };
+
+// A socket-scope throttle is a token bucket in the hooks, not a Redis key.
+const handlerFor = (handlers, request) =>
+  request.type === 'throttle' && request.scope === 'socket' ? handlers.socketThrottle : handlers[request.type];
 
 const maxSeverity = (a, b) => ((SEVERITY_RANK[b] ?? 0) > (SEVERITY_RANK[a] ?? 0) ? b : a);
 
@@ -97,12 +106,14 @@ export const createRemediation = ({ redis, mongo, env, log, bus = null, now = Da
 
         if (result === 'skipped_cap') await raiseFpStorm(config);
         if (!result) {
-          ({ ttlMs, strike } = await computeTtl({ redis, request, family: rule.family, subject, global: config.global }));
-          const handler = handlers[request.type];
+          const handler = handlerFor(handlers, request);
+          if (handler?.needsTtl !== false) {
+            ({ ttlMs, strike } = await computeTtl({ redis, request, family: rule.family, subject, global: config.global }));
+          }
           try {
             if (!handler) throw new Error(`no handler for action type ${request.type}`);
-            const value = { actionId, rule: rule.id, incidentId, expiresAt: requestedAt + ttlMs };
-            ({ result, expiresAt } = await handler.apply({ redis, scope: request.scope, subject, ttlMs, value, now: requestedAt }));
+            const value = { actionId, rule: rule.id, incidentId, expiresAt: ttlMs ? requestedAt + ttlMs : null };
+            ({ result, expiresAt } = await handler.apply({ redis, scope: request.scope, subject, ttlMs, value, params: request.params, now: requestedAt }));
           } catch (err) {
             result = 'failed';
             error = err?.message?.slice(0, 200);
@@ -124,6 +135,7 @@ export const createRemediation = ({ redis, mongo, env, log, bus = null, now = Da
           expiresAt: expiresAt ? new Date(expiresAt) : null,
           ttlMs,
           strike,
+          ...(request.params?.socketId ? { socketId: request.params.socketId } : {}), // random Socket.io id, not personal
           summary: decision.summary, // this firing's own reason, for the incident timeline
           triggerEventTs: event.ts,
           ttdMs: detectedAt - event.ts, // TTD: trigger event → detected (ARCH §14.2)

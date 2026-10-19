@@ -78,11 +78,14 @@ export class WindowStore {
     return list?.length ? list.at(-1) : -Infinity;
   }
 
-  /** The per-subject view rules evaluate against. */
-  view(subject, now) {
+  /**
+   * The view rules evaluate against: counts for `windowKey` (a source, or one
+   * socket of it), firings for `subject` (the source). Same key by default.
+   */
+  view(windowKey, now, subject = windowKey) {
     return {
-      sum: (ruleId, windowMs) => this.sum(ruleId, subject, windowMs, now),
-      distinct: (ruleId, windowMs) => this.distinct(ruleId, subject, windowMs, now),
+      sum: (ruleId, windowMs) => this.sum(ruleId, windowKey, windowMs, now),
+      distinct: (ruleId, windowMs) => this.distinct(ruleId, windowKey, windowMs, now),
       firings: (ruleId, ms, after) => this.firings(ruleId, subject, ms, now, after),
       lastFiring: (ruleId) => this.lastFiring(ruleId, subject),
     };

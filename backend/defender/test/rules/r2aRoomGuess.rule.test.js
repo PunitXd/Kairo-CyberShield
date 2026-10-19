@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { IP_A, IP_B, T0, authFail, feed, recordingRunner, roomMiss, withRules } from '../helpers.js';
+import { IP_A, IP_B, T0, authFail, feed, recordingRunner, roomMiss, socketRoomMiss, withRules } from '../helpers.js';
 
 const r2aOnly = withRules({ R1a: { mode: 'off' }, R1b: { mode: 'off' } });
 const burst = (count, { start = T0, gapMs = 250, ...rest } = {}) =>
@@ -59,4 +59,15 @@ test('R2a and R1 never count each other\'s signals', async () => {
   const second = recordingRunner();
   await feed(second.runner, burst(8));
   assert.deepEqual(second.decisions.map((d) => d.rule), ['R2a'], 'room guesses do not trip R1');
+});
+
+test('R2a: socket misses count together with HTTP misses; a socket crossing also disconnects that socket', async () => {
+  const { runner, decisions } = recordingRunner(r2aOnly);
+  await feed(runner, burst(5));
+  await feed(runner, Array.from({ length: 3 }, (_, i) => socketRoomMiss({ ts: T0 + 2000 + i * 100, socketId: 'sockG' })));
+  assert.equal(decisions.length, 1);
+  assert.deepEqual(decisions[0].decision.actions, [
+    { type: 'block', scope: 'room_join' },
+    { type: 'disconnect', scope: 'socket', params: { socketId: 'sockG' } },
+  ]);
 });
