@@ -8,7 +8,7 @@ import { percentile } from '../utils/percentile.js';
 
 const DAY_MS = 24 * 3600_000;
 
-export const computeOverview = async ({ redis, mongo, now = Date.now() }) => {
+export const computeOverview = async ({ redis, mongo, getConfig, now = Date.now() }) => {
   const since = new Date(now - DAY_MS);
   const [actions, incidents24h, blocks] = await Promise.all([
     mongo.actions
@@ -23,6 +23,7 @@ export const computeOverview = async ({ redis, mongo, now = Date.now() }) => {
     ttdP95Ms: percentile(actions.map((a) => a.ttdMs), 95),
     ttrP95Ms: percentile(actions.map((a) => a.latencyMs), 95),
     incidents24h,
+    activeBlockCap: getConfig?.().global.activeBlockCap ?? null, // safeguard 5 (ARCH §7.2)
     lastPipeline: null, // filled by the GitHub poller (Oct 22)
   };
 };

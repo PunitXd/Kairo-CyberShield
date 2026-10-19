@@ -1,16 +1,104 @@
-// S4 Blocklist (BRIEF §6): every active block and throttle, with Unblock.
-// Placeholder from the dashboard shell (Oct 20 task 3); built in Oct 21 task 5.
+// S4 Blocklist (BRIEF §6): summary line → scope filter → one row per active
+// block or throttle, soonest expiry first, each with its reason, a live
+// countdown and Unblock (with Undo). Bulk unblock, the allowlist panel and
+// manual blocks are cut from the Demo MVP (PHASES §1).
 
+import { useState } from 'react';
+
+import BlockRow from '../../components/BlockRow.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
+import { useBlocks } from '../../hooks/useBlocks.js';
+import { useConsole } from '../../hooks/useConsole.js';
+import { useNow } from '../../hooks/useNow.js';
+import { summarizeBlocks } from '../../utils/summarizeBlocks.js';
+import { formatClock } from '../../utils/formatTime.js';
+
+const FILTERS = [
+  { value: null, label: 'All' },
+  { value: 'auth', label: 'auth' },
+  { value: 'room_join', label: 'rooms' },
+];
 
 export default function Blocklist() {
+  const { connection, status } = useConsole();
+  const stale = connection !== 'live';
+  const killSwitch = Boolean(status?.killSwitch);
+  const now = useNow(stale);
+  const { blocks, incidents, cap, loaded, error, lastExpiryAt, removeBlocksFor } = useBlocks(connection);
+  const [scope, setScope] = useState(null);
+
+  const active = blocks.filter((b) => b.expiresAt > now);
+  const shown = active.filter((b) => !scope || b.scope === scope).sort((a, b) => a.expiresAt - b.expiresAt);
+  const summary = summarizeBlocks(active, now, cap);
+
   return (
     <section aria-labelledby="screen-title">
       <h1 id="screen-title" className="screen__title">
         Blocklist
       </h1>
+
+      <div className="blocklist__bar">
+        <p className="blocklist__summary" aria-live="off">
+          {loaded ? summary.text : '—'}
+          {killSwitch && <span className="blocklist__held"> · held back by the kill switch</span>}
+        </p>
+        <div className="segmented" role="group" aria-label="Filter by scope">
+          {FILTERS.map((f) => (
+            <button
+              key={f.label}
+              type="button"
+              className="segmented__option"
+              aria-pressed={scope === f.value}
+              onClick={() => setScope(f.value)}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="panel">
-        <EmptyState hint="Unblock with a 10-second Undo lands on Oct 21.">Active blocks will be listed here.</EmptyState>
+        {error && !loaded ? (
+          <EmptyState hint={error.message}>Could not load active blocks.</EmptyState>
+        ) : !loaded ? (
+          <div className="skeleton skeleton--block" aria-label="Loading active blocks" />
+        ) : shown.length === 0 ? (
+          <EmptyState hint={lastExpiryAt ? `Last block expired at ${formatClock(lastExpiryAt)}.` : undefined}>
+            {scope && active.length ? 'Nothing blocked in this scope.' : 'Nothing blocked right now.'}
+          </EmptyState>
+        ) : (
+          <div className="feed-scroll">
+            <table className="feed blocklist">
+              <thead>
+                <tr>
+                  <th scope="col">Source</th>
+                  <th scope="col">Action</th>
+                  <th scope="col">Rule</th>
+                  <th scope="col">Reason</th>
+                  <th scope="col" style={{ textAlign: 'right' }}>
+                    Time left
+                  </th>
+                  <th scope="col">
+                    <span className="visually-hidden">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((b) => (
+                  <BlockRow
+                    key={`${b.level}:${b.scope}:${b.subject}`}
+                    block={b}
+                    incident={incidents.get(b.incidentId)}
+                    now={now}
+                    disabled={stale}
+                    killSwitch={killSwitch}
+                    onUnblocked={(x) => removeBlocksFor(x.scope, x.subject)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </section>
   );

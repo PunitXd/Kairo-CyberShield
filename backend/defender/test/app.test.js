@@ -40,6 +40,7 @@ const deps = {
   log: silentLog,
   getConsumerStats: () => ({ lastEventTs: NOW - 500, lastEventAtByInst: { 'cypherfy-backend-1': NOW - 500 } }),
   getRules: () => [{ id: 'R1a', mode: 'enforce' }, { id: 'R1b', mode: 'enforce' }, { id: 'R2a', mode: 'shadow' }],
+  getConfig: () => ({ global: { activeBlockCap: 50 } }),
 };
 
 let server;
@@ -99,7 +100,7 @@ test('GET /api/blocks lists blocks and throttles from Redis, filterable by scope
 test('GET /api/overview computes p95 TTD/TTR from enforced actions only; counts blocks, not throttles', async () => {
   const { status, body } = await rawGet(port, '/api/overview');
   assert.equal(status, 200);
-  assert.deepEqual(body, { activeBlocks: 2, ttdP95Ms: 19, ttrP95Ms: 20, incidents24h: 5, lastPipeline: null });
+  assert.deepEqual(body, { activeBlocks: 2, ttdP95Ms: 19, ttrP95Ms: 20, incidents24h: 5, activeBlockCap: 50, lastPipeline: null });
 });
 
 test('GET /api/incidents is newest first, filterable, and cursor-paginated', async () => {
