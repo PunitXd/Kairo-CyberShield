@@ -3,5 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "description": "cypherfy-hooks: metadata-only event emitter and Redis guard, vendored into CypherFy by scripts/sync-hooks.sh.",
-  "type": "module"
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "ioredis": "5.11.1",
+    "zod": "4.4.3"
+  }
 }

@@ -36,6 +36,7 @@ services:
   cypherfy-backend:
     image: cypherfy-backend:${CYPHERFY_TAG:-dev}
     build: { context: "${CYPHERFY_PATH:?set CYPHERFY_PATH in .env}/backend" }
+    hostname: cypherfy-backend-1                       # becomes the hooks' `inst` in every event
     env_file: [./env/cypherfy.staging.env]
     environment:
       MONGODB_URI: mongodb://cypherfy_app:${CYPHERFY_DB_PASSWORD}@mongo:27017/cypherfy
