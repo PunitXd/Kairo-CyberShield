@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "global": {
+    "maxBlockMs": 3600000,
+    "ladderMs": [300000, 900000, 3600000],
+    "strikesTtlMs": 86400000,
+    "activeBlockCap": 50,
+    "staleEventMs": 300000
+  },
+  "rules": {
+    "R1a": { "mode": "enforce", "threshold": 5, "windowMs": 60000, "ttlMs": 300000 },
+    "R1b": { "mode": "enforce", "threshold": 10, "windowMs": 300000, "softFiringsThreshold": 2, "softFiringsWindowMs": 900000 },
+    "R2a": { "mode": "enforce", "threshold": 8, "windowMs": 60000 }
+  }
+}
