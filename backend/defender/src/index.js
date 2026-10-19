@@ -68,7 +68,11 @@ const boot = async () => {
   });
 
   // --- Console API + realtime ---
-  const deps = { redis, mongo, env: env.env, log, getConsumerStats: () => consumer.stats };
+  const getRules = () => {
+    const cfg = configStore.get();
+    return rules.map((r) => ({ id: r.id, mode: cfg.rules[r.id]?.mode ?? 'off' }));
+  };
+  const deps = { redis, mongo, env: env.env, log, getConsumerStats: () => consumer.stats, getRules };
   const httpServer = createServer(createApp(deps));
   const realtime = createRealtime({ httpServer, bus, log, getStatus: () => getSystemStatus(deps) });
   const blockWatcher = createBlockWatcher({ redis, bus, log });

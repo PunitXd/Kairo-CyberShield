@@ -39,6 +39,7 @@ const deps = {
   env: 'staging',
   log: silentLog,
   getConsumerStats: () => ({ lastEventTs: NOW - 500, lastEventAtByInst: { 'cypherfy-backend-1': NOW - 500 } }),
+  getRules: () => [{ id: 'R1a', mode: 'enforce' }, { id: 'R1b', mode: 'enforce' }, { id: 'R2a', mode: 'shadow' }],
 };
 
 let server;
@@ -60,6 +61,7 @@ test('GET /api/health reports every dependency, the kill switch and the hooks he
   );
   assert.ok(body.consumerLagMs >= 500 && body.consumerLagMs < 5000);
   assert.deepEqual(body.hooks.map((h) => h.inst), ['cypherfy-backend-1']);
+  assert.deepEqual(body.rules, [{ id: 'R1a', mode: 'enforce' }, { id: 'R1b', mode: 'enforce' }, { id: 'R2a', mode: 'shadow' }]);
 });
 
 test('GET /api/health says "down" instead of failing when Redis or Mongo is down', async () => {
@@ -94,10 +96,10 @@ test('GET /api/blocks lists blocks and throttles from Redis, filterable by scope
   assert.equal(bad.body.error.code, 'INVALID_QUERY');
 });
 
-test('GET /api/overview computes p95 TTD/TTR from enforced actions only', async () => {
+test('GET /api/overview computes p95 TTD/TTR from enforced actions only; counts blocks, not throttles', async () => {
   const { status, body } = await rawGet(port, '/api/overview');
   assert.equal(status, 200);
-  assert.deepEqual(body, { activeBlocks: 3, ttdP95Ms: 19, ttrP95Ms: 20, incidents24h: 5, lastPipeline: null });
+  assert.deepEqual(body, { activeBlocks: 2, ttdP95Ms: 19, ttrP95Ms: 20, incidents24h: 5, lastPipeline: null });
 });
 
 test('GET /api/incidents is newest first, filterable, and cursor-paginated', async () => {

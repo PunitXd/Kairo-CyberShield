@@ -16,7 +16,7 @@ const probe = async (fn, what) => {
   }
 };
 
-export const getSystemStatus = async ({ redis, mongo, env, getConsumerStats, now = Date.now() }) => {
+export const getSystemStatus = async ({ redis, mongo, env, getConsumerStats, getRules, now = Date.now() }) => {
   const [redisStatus, mongoStatus] = await Promise.all([
     probe(() => redis.ping(), 'redis ping'),
     probe(() => mongo.db.command({ ping: 1 }), 'mongo ping'),
@@ -41,9 +41,11 @@ export const getSystemStatus = async ({ redis, mongo, env, getConsumerStats, now
     hooks: Object.entries(stats.lastEventAtByInst ?? {}).map(([inst, lastEventAt]) => ({ inst, lastEventAt })),
     killSwitch,
     env,
+    // Rule modes from rules.json, so an empty console can say what Kairo is watching.
+    rules: getRules?.() ?? [],
   };
 };
 
 /** The part of the status that changes meaningfully; used to decide when to push. */
 export const statusFingerprint = (s) =>
-  JSON.stringify({ redis: s.redis, mongo: s.mongo, killSwitch: s.killSwitch, env: s.env, hooks: s.hooks.map((h) => h.inst).sort() });
+  JSON.stringify({ redis: s.redis, mongo: s.mongo, killSwitch: s.killSwitch, env: s.env, rules: s.rules, hooks: s.hooks.map((h) => h.inst).sort() });

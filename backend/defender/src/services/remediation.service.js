@@ -219,9 +219,10 @@ export const createRemediation = ({ redis, mongo, env, log, bus = null, now = Da
 
       if (bus) {
         try {
+          // Blocks and actions go out BEFORE the incident, so a console row is
+          // born with its real state ("Throttled · auth"), never flashing
+          // "Resolved · expired" for the moment before block.added arrives.
           const incident = mongo ? await mongo.incidents.findOne({ _id: incidentId }) : null;
-          if (incident) bus.emit(created ? 'incident.created' : 'incident.updated', incident);
-          for (const a of actions) bus.emit('action.applied', a);
           const at = now();
           for (const a of actions) {
             if (!ENFORCED.has(a.result) || !a.expiresAt) continue;
@@ -237,6 +238,8 @@ export const createRemediation = ({ redis, mongo, env, log, bus = null, now = Da
               })
             );
           }
+          for (const a of actions) bus.emit('action.applied', a);
+          if (incident) bus.emit(created ? 'incident.created' : 'incident.updated', incident);
         } catch (err) {
           log.warn({ msg: 'realtime.publish_failed', error: err?.message?.slice(0, 200) });
         }

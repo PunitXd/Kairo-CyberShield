@@ -19,7 +19,7 @@ export const computeOverview = async ({ redis, mongo, now = Date.now() }) => {
   ]);
 
   return {
-    activeBlocks: blocks.length,
+    activeBlocks: blocks.filter((b) => b.level === 'block').length, // throttles are listed, not counted as blocks
     ttdP95Ms: percentile(actions.map((a) => a.ttdMs), 95),
     ttrP95Ms: percentile(actions.map((a) => a.latencyMs), 95),
     incidents24h,

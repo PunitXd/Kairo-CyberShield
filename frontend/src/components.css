@@ -1,0 +1,338 @@
+/* Component styles (BRIEF §7). Values come from tokens.css only. */
+
+/* ---- SeverityGlyph: 4 bars + word ---- */
+
+.sev {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--type-label);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.sev__bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+}
+.sev__bar {
+  width: 3px;
+  border-radius: 1px;
+  background: var(--border);
+}
+.sev--info {
+  color: var(--sev-info);
+}
+.sev--low {
+  color: var(--sev-low);
+}
+.sev--medium {
+  color: var(--sev-medium);
+}
+.sev--high {
+  color: var(--sev-high);
+}
+.sev--critical {
+  color: var(--act-pill-text);
+  background: var(--sev-critical);
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.sev__bar--on {
+  background: currentColor;
+}
+
+/* ---- ActionPill: icon + verb, full radius only here ---- */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-3) 2px var(--space-2);
+  border-radius: var(--radius-pill);
+  border: 1px solid transparent;
+  font-size: var(--type-label);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--act-pill-text);
+  white-space: nowrap;
+  transition: background-color 300ms var(--ease-out), color 300ms var(--ease-out); /* updated in place */
+}
+.pill__icon {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.pill--blocked {
+  background: var(--act-blocked);
+}
+.pill--throttled {
+  background: var(--act-throttled);
+}
+.pill--resolved {
+  background: var(--act-resolved);
+}
+.pill--failed {
+  background: var(--act-failed);
+}
+.pill--shadow {
+  background: transparent;
+  border: 1px dashed var(--act-shadow);
+  color: var(--act-shadow);
+}
+
+/* ---- Countdown ---- */
+
+.countdown {
+  color: var(--text-2);
+}
+.countdown--urgent {
+  color: var(--text-1);
+  font-weight: 600;
+}
+.countdown--expired,
+.countdown--none {
+  color: var(--text-3);
+}
+
+/* ---- HashValue ---- */
+
+.hash {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  white-space: nowrap;
+}
+.hash__value {
+  color: var(--text-2);
+}
+.hash__copy {
+  padding: 0 var(--space-1);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text-3);
+  font: inherit;
+  font-size: var(--type-label);
+  cursor: pointer;
+  opacity: 0;
+}
+.hash:hover .hash__copy,
+.hash__copy:focus-visible {
+  opacity: 1;
+}
+.hash__copy:hover {
+  color: var(--text-1);
+  border-color: var(--border-strong);
+}
+
+/* ---- KpiTile ---- */
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-1);
+  text-decoration: none;
+  min-width: 0;
+}
+.kpi--link:hover {
+  border-color: var(--border-strong);
+}
+.kpi__label {
+  font-size: var(--type-label);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+}
+.kpi__value {
+  font-size: var(--type-kpi);
+  font-weight: 600;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.kpi__hint {
+  font-size: var(--type-label);
+  color: var(--text-3);
+  min-height: 1.4em;
+}
+.kpi--empty .kpi__value {
+  color: var(--text-3);
+}
+.kpi--stale {
+  background-image: repeating-linear-gradient(135deg, transparent 0 6px, rgba(139, 150, 165, 0.08) 6px 12px);
+}
+.kpi--stale .kpi__value {
+  color: var(--text-2);
+}
+
+.skeleton {
+  display: inline-block;
+  width: 4ch;
+  height: 0.8em;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+
+/* ---- Panels ---- */
+
+.panel__title {
+  font-size: var(--type-heading);
+  margin-bottom: var(--space-3);
+}
+
+/* ---- Incident feed ---- */
+
+.feed {
+  width: 100%;
+  border-collapse: collapse;
+}
+.feed th {
+  text-align: left;
+  font-size: var(--type-label);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-3);
+  padding: 0 var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.row td {
+  height: var(--row-height);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.row:last-child td {
+  border-bottom: none;
+}
+.row__signal {
+  width: 100%;
+}
+.row__summary {
+  display: block;
+}
+.row__rule {
+  color: var(--text-3);
+}
+.row--latest .row__summary {
+  font-size: 1.143rem; /* the newest incident is the largest row (principle 2) */
+  font-weight: 500;
+}
+.row__expires {
+  text-align: right;
+  white-space: nowrap;
+}
+.row--new td {
+  animation: row-highlight 2s var(--ease-out) 1;
+}
+@keyframes row-highlight {
+  from {
+    background-color: var(--accent-16);
+  }
+  to {
+    background-color: transparent;
+  }
+}
+
+/* ---- Active blocks rail ---- */
+
+.rail__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.block-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+.block-card__top,
+.block-card__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.block-card__rule {
+  color: var(--text-3);
+}
+
+/* ---- Button ---- */
+
+.btn {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  font-size: var(--type-label);
+  font-weight: 500;
+  cursor: pointer;
+}
+.btn--secondary {
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  color: var(--text-1);
+}
+.btn--secondary:hover:not(:disabled) {
+  background: var(--surface-1);
+}
+.btn:disabled {
+  cursor: not-allowed;
+  color: var(--text-3);
+  border-color: var(--border);
+}
+
+/* ---- Overview layout ---- */
+
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+.feed-scroll {
+  overflow-x: auto;
+}
+
+/* Tablet (and the 125% demo zoom on a 1440 px laptop): rail below the feed, KPIs 2 x 2 */
+@media (max-width: 1279px) {
+  .kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row--new td {
+    animation: none;
+  }
+  .row--new td:first-child {
+    box-shadow: inset 3px 0 0 var(--accent); /* static 2 s marker instead of the fade */
+  }
+}
