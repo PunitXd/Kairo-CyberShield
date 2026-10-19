@@ -93,7 +93,7 @@ test('unblock returns null when nothing is active (→ 404)', async () => {
   assert.equal(await svc.unblock('auth', IP_A), null);
 });
 
-test('undo within 10 s restores every key with its REMAINING TTL, reopens the incident, and is single-use', async () => {
+test('undo within the window restores every key with its REMAINING TTL, reopens the incident, and is single-use', async () => {
   const { clock, redis, mongo, events, svc } = await setup();
   const { undoToken } = await svc.unblock('auth', IP_A);
   events.length = 0;
@@ -118,7 +118,7 @@ test('undo within 10 s restores every key with its REMAINING TTL, reopens the in
   assert.equal(await svc.undo(undoToken), null, 'a token works once');
 });
 
-test('undo after the 10 s window restores nothing (→ 410)', async () => {
+test('undo after the 30 s grace restores nothing (→ 410)', async () => {
   const { clock, redis, svc } = await setup();
   const { undoToken } = await svc.unblock('auth', IP_A);
   clock.now += UNDO_WINDOW_MS + 1;
@@ -137,4 +137,13 @@ test('undo never clobbers a newer key, and skips keys that would have expired by
   assert.equal(JSON.parse(await redis.get(KEY.block)).incidentId, 'NEW', 'newer block kept');
   assert.equal(await redis.pttl(KEY.block), 900_000);
   assert.equal(await redis.exists(KEY.throttle), 0, 'expired throttle not resurrected');
+});
+
+test('a hovered toast clicked at 20 s still undoes: the server grace (30 s) outlasts the 10 s toast', async () => {
+  const { clock, redis, svc } = await setup();
+  const { undoToken, undoExpiresAt } = await svc.unblock('auth', IP_A);
+  assert.equal(undoExpiresAt, T0 + 30_000);
+  clock.now += 20_000;
+  assert.deepEqual(await svc.undo(undoToken), { restored: 2 });
+  assert.equal(await redis.pttl(KEY.block), 280_000, '300 s minus the 20 s it was lifted');
 });

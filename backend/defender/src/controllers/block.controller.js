@@ -23,6 +23,6 @@ export const deleteBlock = asyncHandler(async (req, res) => {
 export const undoUnblock = asyncHandler(async (req, res) => {
   const { undoToken } = undoBodySchema.parse(req.body ?? {});
   const result = await req.app.locals.kairo.unblock.undo(undoToken, { actorIp: req.ip });
-  if (!result) throw new ApiError(410, 'UNDO_EXPIRED', 'The 10-second undo window has passed');
+  if (!result) throw new ApiError(410, 'UNDO_EXPIRED', 'The undo window has passed');
   res.json(result);
 });

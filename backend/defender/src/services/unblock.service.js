@@ -1,4 +1,4 @@
-// Operator unblock with a 10-second undo (ARCH §4.3, BRIEF Flow B).
+// Operator unblock with undo (ARCH §4.3, BRIEF Flow B).
 //
 // unblock(scope, subject):
 //   1. Save each enforcement key's value and remaining PTTL (block, throttle)
@@ -9,13 +9,16 @@
 //   2. Mongo: actions → liftedAt/liftedBy, incidents → manually_resolved,
 //      and one audit_log entry (append-only).
 //   3. Publish block.removed + incident.updated, return an unguessable undo
-//      token valid for 10 s.
+//      token. The toast offers Undo for 10 s and pauses while hovered or
+//      focused (BRIEF §7); the server honours the token for a 30 s grace so a
+//      paused toast never offers an Undo the server would refuse (decided
+//      Oct 19; ARCH §4.3 said 10 s).
 // undo(token): put the keys back with their REMAINING TTL (never longer than
 // they had left), restore the incident's previous status, audit it, publish
 // block.added + incident.updated. A token works once.
 //
 // Unblocking reduces enforcement, so it needs no confirmation (BRIEF
-// principle 1). Undo state lives in memory: one Defender, 10-second window.
+// principle 1). Undo state lives in memory: one Defender, 30-second grace.
 
 import { randomBytes } from 'node:crypto';
 
@@ -24,7 +27,7 @@ import { ulid } from 'ulid';
 import { KEYS } from '../defender.constant.js';
 import { toBlockItem } from './block.service.js';
 
-export const UNDO_WINDOW_MS = 10_000;
+export const UNDO_WINDOW_MS = 30_000; // server grace; the toast itself shows for 10 s
 const SCOPE_FAMILY = { auth: 'auth', room_join: 'room' };
 
 const parseValue = (raw) => {

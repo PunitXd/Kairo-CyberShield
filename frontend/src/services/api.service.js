@@ -42,5 +42,5 @@ export const getBlocks = (params) => request('GET', '/api/blocks', { params });
 export const deleteBlock = (scope, subject) =>
   request('DELETE', `/api/blocks/${encodeURIComponent(scope)}/${encodeURIComponent(subject)}`);
 
-/** Restore an unblock within its 10 s window → { restored }; 410 UNDO_EXPIRED after that. */
+/** Restore an unblock → { restored }. The server honours the token for 30 s (the toast shows for 10 s, longer while hovered); 410 UNDO_EXPIRED after that. */
 export const undoUnblock = (undoToken) => request('POST', '/api/blocks/undo', { body: { undoToken } });
