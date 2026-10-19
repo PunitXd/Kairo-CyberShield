@@ -1,0 +1,7 @@
+{
+  "name": "@kairo/hooks",
+  "private": true,
+  "version": "0.1.0",
+  "description": "cypherfy-hooks: metadata-only event emitter and Redis guard, vendored into CypherFy by scripts/sync-hooks.sh.",
+  "type": "module"
+}

@@ -3,3 +3,4 @@ node_modules/
 defender/public/
 dashboard/dist/
 .DS_Store
+env/*.env

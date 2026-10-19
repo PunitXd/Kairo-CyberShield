@@ -1,0 +1,96 @@
+# Kairo Shield demo stack (ARCH §11.2). Staging only: local Mongo and Redis,
+# never cypherfy.in or MongoDB Atlas.
+#
+#   cp .env.example .env                                   # fill in secrets
+#   cp env/cypherfy.staging.env.example env/cypherfy.staging.env
+#   docker compose up -d --build
+#   npm run seed                                           # demo accounts + room
+#
+# Attacks run from their own container so they get a different source IP from
+# the host (where legit-check.js runs):
+#   docker compose --profile attack run --rm attacker node attacks/bruteforce.js --target http://cypherfy-backend:8000
+
+name: kairo-demo
+
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["127.0.0.1:6379:6379"]                     # host tools (tail-events) only
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, retries: 10 }
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD in .env}
+      # Read by infra/mongo/init.js to create the least-privilege users.
+      CYPHERFY_DB_PASSWORD: ${CYPHERFY_DB_PASSWORD:?set CYPHERFY_DB_PASSWORD in .env}
+      KAIRO_DB_PASSWORD: ${KAIRO_DB_PASSWORD:?set KAIRO_DB_PASSWORD in .env}
+    volumes: ["mongo-data:/data/db", "./infra/mongo/init.js:/docker-entrypoint-initdb.d/init.js:ro"]
+    # Not published: the host already runs its own mongod on 27017.
+    healthcheck: { test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"], interval: 5s, retries: 10 }
+    restart: unless-stopped
+
+  cypherfy-backend:
+    image: cypherfy-backend:${CYPHERFY_TAG:-dev}
+    build: { context: "${CYPHERFY_PATH:?set CYPHERFY_PATH in .env}/backend" }
+    env_file: [./env/cypherfy.staging.env]
+    environment:
+      MONGODB_URI: mongodb://cypherfy_app:${CYPHERFY_DB_PASSWORD}@mongo:27017/cypherfy
+      REDIS_URL: redis://redis:6379
+      CLIENT_URL: http://${DEMO_HOST:-localhost}:8080
+      ACCESS_TOKEN_SECRET: ${CYPHERFY_ACCESS_TOKEN_SECRET:?set CYPHERFY_ACCESS_TOKEN_SECRET in .env}
+      REFRESH_TOKEN_SECRET: ${CYPHERFY_REFRESH_TOKEN_SECRET:?set CYPHERFY_REFRESH_TOKEN_SECRET in .env}
+      KAIRO_ENABLED: "true"
+      KAIRO_ENV: staging
+      KAIRO_REDIS_URL: redis://redis:6379
+      KAIRO_HASH_SECRET: ${KAIRO_HASH_SECRET:?set KAIRO_HASH_SECRET in .env}
+    # Localhost by default: the attacker is a container on this network, so no
+    # LAN exposure is needed. Set CYPHERFY_BIND=0.0.0.0 to reach it from a phone.
+    ports: ["${CYPHERFY_BIND:-127.0.0.1}:8000:8000"]
+    depends_on: { redis: { condition: service_healthy }, mongo: { condition: service_healthy } }
+    restart: unless-stopped
+
+  cypherfy-web:
+    image: cypherfy-web:${CYPHERFY_TAG:-dev}
+    build:
+      context: "${CYPHERFY_PATH}/frontend-web"
+      args:
+        VITE_API_BASE_URL: http://${DEMO_HOST:-localhost}:8000/api/v1
+        VITE_SOCKET_URL: http://${DEMO_HOST:-localhost}:8000
+    ports: ["${CYPHERFY_BIND:-127.0.0.1}:8080:80"]
+    depends_on: [cypherfy-backend]
+    restart: unless-stopped
+
+  kairo-defender:
+    build: { context: ., dockerfile: defender/Dockerfile }
+    environment:
+      KAIRO_ENV: staging
+      KAIRO_PORT: ${KAIRO_PORT:-7070}
+      KAIRO_REDIS_URL: redis://redis:6379
+      KAIRO_MONGO_URI: mongodb://kairo_defender:${KAIRO_DB_PASSWORD}@mongo:27017/kairo
+      KAIRO_HASH_SECRET: ${KAIRO_HASH_SECRET}
+      KAIRO_RULES_PATH: /app/config/rules.json
+      KAIRO_STALE_EVENT_MS: ${KAIRO_STALE_EVENT_MS:-300000}
+      CYPHERFY_HEALTH_URL: http://cypherfy-backend:8000/api/v1/health
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports: ["127.0.0.1:7070:7070"]                     # operator console: localhost only
+    read_only: true
+    tmpfs: ["/tmp"]
+    user: "node"
+    depends_on: { redis: { condition: service_healthy }, mongo: { condition: service_healthy } }
+    restart: unless-stopped
+
+  attacker:
+    image: node:22-alpine
+    profiles: ["attack"]
+    working_dir: /app
+    volumes: ["./attacks:/app/attacks:ro"]
+    read_only: true
+    user: "node"
+    depends_on: { cypherfy-backend: { condition: service_healthy } }
+
+volumes:
+  mongo-data:

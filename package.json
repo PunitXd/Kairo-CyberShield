@@ -1,0 +1,22 @@
+{
+  "name": "kairo-shield",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Self-healing DevSecOps for encrypted systems. Protects a staging copy of CypherFy.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/*",
+    "hooks",
+    "defender",
+    "attacks"
+  ],
+  "scripts": {
+    "stack:up": "docker compose up -d --build",
+    "stack:down": "docker compose down",
+    "seed": "node --env-file=.env scripts/seed-cypherfy.js",
+    "test": "npm test --workspaces --if-present"
+  }
+}
