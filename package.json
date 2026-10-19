@@ -9,7 +9,8 @@
   },
   "workspaces": [
     "backend/*",
-    "attacks"
+    "attacks",
+    "frontend"
   ],
   "scripts": {
     "stack:up": "docker compose up -d --build",
@@ -17,7 +18,9 @@
     "seed": "node --env-file=.env scripts/seedCypherfy.js",
     "hooks:sync": "bash scripts/syncHooks.sh",
     "tail": "node scripts/tailEvents.js",
-    "test": "npm test --workspaces --if-present"
+    "test": "npm test --workspaces --if-present",
+    "dashboard:dev": "npm run dev -w frontend",
+    "dashboard:build": "npm run build -w frontend"
   },
   "devDependencies": {
     "kairo-schema": "*",
