@@ -2,7 +2,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 
-import { toStreamFields } from 'kairo-schema';
+import { EVENT_TYPES, toStreamFields } from 'kairo-schema';
 
 import { createApp } from '../src/app.js';
 import { fakeMongo, fakeRedis, listen, rawGet } from './apiFakes.js';
@@ -48,7 +48,8 @@ test('GET /api/schema returns the contract the Privacy screen renders', async ()
   const { status, body } = await rawGet(port, '/api/schema');
   assert.equal(status, 200);
   assert.equal(body.schemaVersion, '1');
-  assert.deepEqual(body.eventTypes, ['auth.fail', 'auth.success', 'room.join.invalid', 'http.denied']);
+  assert.deepEqual(body.eventTypes, EVENT_TYPES);
+  assert.ok(body.received.some((f) => f.field === 'sock.counts' && f.note));
   assert.ok(body.received.some((f) => f.field === 'room.codeHash' && f.type === '16-hex HMAC hash'));
   assert.ok(body.neverReceived.some((n) => n.item === 'Raw room codes'));
   assert.match(body.scope, /CypherFy's own encryption model is documented separately/);

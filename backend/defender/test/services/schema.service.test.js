@@ -23,8 +23,11 @@ test('carriedBy and required follow the schema', () => {
   assert.equal(byField['src.ipHash'].required, true);
   assert.deepEqual(byField['auth.accountHash'].carriedBy, ['auth.fail', 'auth.success']);
   assert.equal(byField['auth.accountHash'].required, false);
-  assert.deepEqual(byField['room.codeHash'].carriedBy, ['room.join.invalid']);
-  assert.equal(byField['http.scope'].type, '"auth" | "room_join"');
+  assert.deepEqual(byField['room.codeHash'].carriedBy, ['room.join.denied', 'room.join.invalid', 'room.join.success']);
+  assert.equal(byField['http.scope'].type, '"auth" | "room_join" | "socket"');
+  assert.deepEqual(byField['sock.counts'].carriedBy, ['socket.rate']);
+  assert.equal(byField['sock.counts'].type, 'event name → packet count');
+  assert.equal(byField['src.socketId'].required, false); // only socket events carry it
 });
 
 test('never received lists the content Kairo must not see, each "Not in the event schema"', () => {

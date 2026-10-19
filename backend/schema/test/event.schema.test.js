@@ -14,16 +14,27 @@ const H = '3e9a5b0c1d2e44c1';
 const src = { ipHash: H, client: 'unknown', authed: false };
 const common = { ts: 1760800000123, env: 'staging', inst: 'cypherfy-backend-1', src };
 
+const SID = 'f21c9Qk3xY0aBcD-_1';
+const sockSrc = { ...src, socketId: SID };
+const onSocket = { ...common, src: sockSrc };
+
 const valid = {
   'auth.fail': { ...common, type: 'auth.fail', auth: { route: 'login', status: 401, accountHash: 'a91f0c3e7b2d10f8' } },
   'auth.success': { ...common, type: 'auth.success', auth: { route: 'login', status: 200 } },
   'room.join.invalid': { ...common, type: 'room.join.invalid', room: { codeHash: H, kind: 'ephemeral', via: 'http' } },
+  'room.join.success': { ...onSocket, type: 'room.join.success', room: { codeHash: H, kind: 'ephemeral', via: 'socket' } },
+  'room.join.denied': { ...onSocket, type: 'room.join.denied', room: { codeHash: H, kind: 'ephemeral', via: 'socket' } },
   'http.denied': { ...common, type: 'http.denied', http: { scope: 'auth', rule: 'R1b' } },
+  'socket.connect': { ...onSocket, type: 'socket.connect' },
+  'socket.disconnect': { ...onSocket, type: 'socket.disconnect' },
+  'socket.rate': { ...onSocket, type: 'socket.rate', sock: { counts: { send_message: 41, typing_start: 3 }, total: 44, windowMs: 1000 } },
+  'socket.invalid_payload': { ...onSocket, type: 'socket.invalid_payload', sock: { event: 'join_room' } },
+  'kairo.ack': { ...onSocket, type: 'kairo.ack', ack: { actionId: '01JAB3K5Q8ZP4M2N7R9T1V6W0X', ok: true } },
 };
 
 const rejects = (event, why) => assert.equal(safeParseEvent(event).success, false, why);
 
-test('every MVP event type has a valid example that parses unchanged', () => {
+test('every event type has a valid example that parses unchanged', () => {
   assert.deepEqual(Object.keys(valid).sort(), [...EVENT_TYPES].sort());
   for (const event of Object.values(valid)) assert.deepEqual(parseEvent(event), event);
 });
@@ -58,9 +69,9 @@ test('each type only accepts its own section', () => {
   rejects(noAuth, 'auth.fail without auth');
 });
 
-test('types, enums and bounds outside the MVP schema are rejected', () => {
-  rejects({ ...valid['auth.fail'], type: 'socket.rate' }, 'socket.rate is not in the Demo MVP');
-  rejects({ ...valid['http.denied'], http: { scope: 'socket', rule: 'R3b' } }, 'socket scope is cut');
+test('types, enums and bounds outside the schema are rejected', () => {
+  rejects({ ...valid['auth.fail'], type: 'socket.flood' }, 'unknown type');
+  rejects({ ...valid['http.denied'], http: { scope: 'everything', rule: 'R3b' } }, 'unknown scope');
   rejects({ ...valid['http.denied'], http: { scope: 'auth', rule: 'DROP TABLE' } }, 'rule id format');
   rejects({ ...valid['auth.fail'], env: 'prod' }, 'env enum');
   rejects({ ...valid['auth.fail'], inst: 'x'.repeat(33) }, 'inst max 32');
@@ -85,4 +96,41 @@ test('validation errors do not echo the rejected value', () => {
   const result = safeParseEvent({ ...valid['auth.fail'], auth: { ...valid['auth.fail'].auth, accountHash: secret } });
   assert.equal(result.success, false);
   assert.ok(!JSON.stringify(result.error.issues).includes(secret), 'issues must not contain the raw input');
+});
+
+test('the socket scope is accepted for refusals', () => {
+  assert.equal(safeParseEvent({ ...valid['http.denied'], src: sockSrc, http: { scope: 'socket', rule: 'R3b' } }).success, true);
+});
+
+test('socket events must name their socket; HTTP-only events must not', () => {
+  for (const type of ['socket.connect', 'socket.disconnect', 'socket.rate', 'socket.invalid_payload', 'kairo.ack']) {
+    rejects({ ...valid[type], src }, `${type} without socketId`);
+  }
+  rejects({ ...valid['auth.fail'], src: sockSrc }, 'auth.fail is HTTP only');
+  rejects({ ...valid['socket.connect'], src: { ...sockSrc, socketId: 'has spaces in it' } }, 'socket id format');
+  rejects({ ...valid['socket.connect'], src: { ...sockSrc, socketId: 'x'.repeat(33) } }, 'socket id length');
+});
+
+test('socket sections reject unknown fields and payload content', () => {
+  for (const type of ['socket.rate', 'socket.invalid_payload']) {
+    rejects({ ...valid[type], sock: { ...valid[type].sock, payload: 'hello' } }, `${type} sock.payload`);
+  }
+  rejects({ ...valid['socket.connect'], sock: { total: 1 } }, 'socket.connect has no sock section');
+  rejects({ ...valid['kairo.ack'], ack: { ...valid['kairo.ack'].ack, socketId: SID } }, 'ack.socketId');
+  rejects({ ...valid['socket.rate'], message: 'hi' }, 'top-level message');
+});
+
+test('client-chosen event names cannot carry text', () => {
+  const rate = (counts) => ({ ...valid['socket.rate'], sock: { counts, total: 1, windowMs: 1000 } });
+  rejects(rate({ 'hello how are you': 1 }), 'spaces');
+  rejects(rate({ ['a'.repeat(33)]: 1 }), 'over 32 chars');
+  rejects(rate({ '{"text":"hi"}': 1 }), 'JSON');
+  rejects(rate(Object.fromEntries(Array.from({ length: 21 }, (_, i) => [`ev${i}`, 1]))), 'more than 20 names');
+  rejects(rate({ send_message: 0 }), 'zero count');
+  rejects({ ...valid['socket.invalid_payload'], sock: { event: 'join room now' } }, 'invalid_payload event name');
+});
+
+test('kairo.ack needs a ulid action id and a boolean', () => {
+  rejects({ ...valid['kairo.ack'], ack: { actionId: 'not-a-ulid', ok: true } }, 'actionId format');
+  rejects({ ...valid['kairo.ack'], ack: { actionId: '01JAB3K5Q8ZP4M2N7R9T1V6W0X', ok: 'yes' } }, 'ok boolean');
 });

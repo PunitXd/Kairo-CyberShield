@@ -41,7 +41,7 @@ test('DELETE /api/blocks/:scope/:subject unblocks and returns the undo token', a
 test('DELETE with nothing to unblock → 404; bad scope or a non-hash subject → 400 and never reaches the service', async () => {
   assert.equal((await rawRequest(port, 'DELETE', `/api/blocks/room_join/${'b'.repeat(16)}`)).status, 404);
   const before = calls.length;
-  for (const path of [`/api/blocks/everything/${H}`, '/api/blocks/auth/172.18.0.5', '/api/blocks/auth/XK9PLM', `/api/blocks/socket/${H}`]) {
+  for (const path of [`/api/blocks/everything/${H}`, '/api/blocks/auth/172.18.0.5', '/api/blocks/auth/XK9PLM']) {
     const { status, body } = await rawRequest(port, 'DELETE', path);
     assert.equal(status, 400, path);
     assert.equal(body.error.code, 'INVALID_QUERY');

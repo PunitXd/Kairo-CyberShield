@@ -20,6 +20,7 @@ export const FIELD_DOCS = {
   'src.authed': { note: 'Whether CypherFy had already authenticated the request', example: false },
   'src.userHash': { note: 'HMAC of the account id, only when logged in', example: 'a1b2c3d4e5f60718' },
   'src.sessionKey': { note: 'HMAC of the session id, to group reconnects', example: '0f1e2d3c4b5a6978' },
+  'src.socketId': { note: 'Socket.io connection id: random, not personal', example: 'f21c9Qk3xY0aBcD' },
   'auth.route': { note: 'Which auth endpoint answered', example: 'login' },
   'auth.status': { note: 'The HTTP status code it returned', example: 401 },
   'auth.accountHash': { note: 'HMAC of the lowercased email; the email is dropped in the hook', example: 'a91f0c3e7b2d10f8' },
@@ -29,6 +30,12 @@ export const FIELD_DOCS = {
   'room.error': { note: "CypherFy's own error code", example: 'ROOM_NOT_FOUND' },
   'http.scope': { note: 'Which Kairo scope refused the request', example: 'auth' },
   'http.rule': { note: 'The rule whose block or throttle applied', example: 'R1b' },
+  'sock.counts': { note: 'Packets per event name in one second; names only, never the payload', example: { send_message: 41, typing_start: 3 } },
+  'sock.total': { note: 'All packets from this socket in that second', example: 44 },
+  'sock.windowMs': { note: 'Length of the counting bucket', example: 1000 },
+  'sock.event': { note: 'Which CypherFy event had a malformed payload; the payload is never sent', example: 'join_room' },
+  'ack.actionId': { note: 'The Kairo action the hooks just carried out', example: '01JAB3K5Q8ZP4M2N7R9T1V6W0X' },
+  'ack.ok': { note: 'Whether it succeeded', example: true },
 };
 
 /** What Kairo never receives (BRIEF §11: one honest phrase each). */
@@ -47,6 +54,7 @@ export const NEVER_RECEIVED = [
 ].map((item) => ({ item, note: 'Not in the event schema' }));
 
 const typeLabel = (prop) => {
+  if (prop.type === 'object' && prop.additionalProperties) return 'event name → packet count';
   if (prop.const) return `"${prop.const}"`;
   if (prop.enum) return prop.enum.map((v) => `"${v}"`).join(' | ');
   if (prop.pattern === HEX16_PATTERN) return '16-hex HMAC hash';

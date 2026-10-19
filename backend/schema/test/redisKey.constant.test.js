@@ -20,7 +20,8 @@ test('key builders refuse raw identifiers and unknown scopes', () => {
   assert.throws(() => KEYS.block('auth', '172.18.0.5'));
   assert.throws(() => KEYS.block('auth', 'demo01@kairo.test'));
   assert.throws(() => KEYS.allow('XK9PLM'));
-  assert.throws(() => KEYS.block('socket', '3e9a5b0c1d2e44c1'));
+  assert.throws(() => KEYS.block('everything', '3e9a5b0c1d2e44c1'));
+  assert.equal(KEYS.block('socket', '3e9a5b0c1d2e44c1'), 'kairo:block:socket:3e9a5b0c1d2e44c1');
   assert.throws(() => KEYS.strikes('everything', '3e9a5b0c1d2e44c1'));
   assert.equal(KEYS.hooksHeartbeat('a:b*c'), 'kairo:hb:hooks:a_b_c');
 });
