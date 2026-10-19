@@ -10,11 +10,16 @@
     "test": "node --test \"test/**/*.test.js\""
   },
   "dependencies": {
-    "kairo-schema": "*",
+    "express": "4.22.3",
     "ioredis": "5.11.1",
+    "kairo-schema": "*",
     "mongodb": "7.7.0",
     "pino": "10.4.0",
+    "socket.io": "4.8.4",
     "ulid": "3.0.2",
     "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "socket.io-client": "4.8.4"
   }
 }

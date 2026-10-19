@@ -1,5 +1,8 @@
-// Defender boot (ARCH §15): config → redis → mongo → engine.
-// The console API, realtime channel and dashboard join on Oct 20.
+// Defender boot (ARCH §15): config → redis → mongo → engine → api + realtime.
+// The dashboard's static build joins the same server on Oct 20 (task 5).
+
+import { EventEmitter } from 'node:events';
+import { createServer } from 'node:http';
 
 import Redis from 'ioredis';
 
@@ -10,6 +13,10 @@ import { WindowStore } from './utils/WindowStore.js';
 import { createRuleRunner } from './services/ruleRunner.service.js';
 import { createConsumer } from './services/consumer.service.js';
 import { createRemediation } from './services/remediation.service.js';
+import { createBlockWatcher } from './services/block.service.js';
+import { getSystemStatus } from './services/health.service.js';
+import { createRealtime } from './services/realtime.service.js';
+import { createApp } from './app.js';
 import { rules } from './rules/index.js';
 
 const SWEEP_MS = 30_000;
@@ -40,11 +47,12 @@ const boot = async () => {
   }
 
   const mongo = await connectDB(env.mongoUri);
+  const bus = new EventEmitter(); // in-process: remediation / block watcher → realtime
 
   const windows = new WindowStore();
   setInterval(() => windows.sweep(Date.now()), SWEEP_MS).unref();
 
-  const remediation = createRemediation({ redis, mongo, env: env.env, log });
+  const remediation = createRemediation({ redis, mongo, env: env.env, log, bus });
   const runner = createRuleRunner({
     rules,
     windows,
@@ -59,9 +67,19 @@ const boot = async () => {
     getStaleMs: () => env.staleEventMs ?? configStore.get().global.staleEventMs,
   });
 
+  // --- Console API + realtime ---
+  const deps = { redis, mongo, env: env.env, log, getConsumerStats: () => consumer.stats };
+  const httpServer = createServer(createApp(deps));
+  const realtime = createRealtime({ httpServer, bus, log, getStatus: () => getSystemStatus(deps) });
+  const blockWatcher = createBlockWatcher({ redis, bus, log });
+  await blockWatcher.start();
+  await new Promise((resolve) => httpServer.listen(env.port, env.bindHost, resolve));
+
   const shutdown = async (signal) => {
     log.info({ msg: 'defender.stopping', signal });
     consumer.stop();
+    blockWatcher.stop();
+    await realtime.close(); // also closes the HTTP server
     await Promise.allSettled([redis.quit(), consumerRedis.quit(), mongo.client.close()]);
     process.exit(0);
   };
@@ -74,6 +92,7 @@ const boot = async () => {
     configVersion: config.version,
     rules: rules.map((r) => `${r.id}:${config.rules[r.id]?.mode ?? 'missing'}`),
     enforce: env.env === 'staging',
+    listen: `${env.bindHost}:${env.port}`,
   });
 
   await consumer.run();

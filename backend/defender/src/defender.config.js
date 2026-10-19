@@ -48,6 +48,11 @@ export const readEnv = (env = process.env) => {
     rulesPath: env.KAIRO_RULES_PATH || new URL('../config/rules.json', import.meta.url).pathname,
     logLevel: env.LOG_LEVEL || 'info',
     staleEventMs: Number(env.KAIRO_STALE_EVENT_MS) > 0 ? Number(env.KAIRO_STALE_EVENT_MS) : null,
+    port: Number(env.KAIRO_PORT) > 0 ? Number(env.KAIRO_PORT) : 7070,
+    // Loopback by default. Inside the container it must be 0.0.0.0 to be
+    // reachable through the published port, which Compose binds to the host's
+    // 127.0.0.1 only, so the console is still never on the LAN.
+    bindHost: env.KAIRO_BIND_HOST || '127.0.0.1',
   };
   const missing = ['env', 'redisUrl', 'mongoUri'].filter((k) => !cfg[k]);
   if (missing.length) throw new Error(`missing environment: ${missing.join(', ')}`);

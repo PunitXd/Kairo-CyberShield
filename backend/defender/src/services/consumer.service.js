@@ -13,7 +13,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export const createConsumer = ({ redis, runner, log, getStaleMs, now = Date.now }) => {
   let running = false;
-  const stats = { processed: 0, invalid: 0, stale: 0, lastEventTs: null };
+  const stats = { processed: 0, invalid: 0, stale: 0, lastEventTs: null, lastEventAtByInst: {} };
 
   const ensureGroup = async () => {
     try {
@@ -44,6 +44,7 @@ export const createConsumer = ({ redis, runner, log, getStaleMs, now = Date.now 
         await runner.handle(event);
         stats.processed++;
         stats.lastEventTs = event.ts;
+        stats.lastEventAtByInst[event.inst] = event.ts; // inst is schema-validated (≤ 32 chars)
       } catch (err) {
         log.error({ msg: 'event.failed', id, type: event.type, error: err?.message?.slice(0, 200) });
       }

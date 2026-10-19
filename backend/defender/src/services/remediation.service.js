@@ -6,6 +6,8 @@
 //   2. Per action: safeguards in order, then the TTL (fixed or ladder).
 //   3. Apply through Redis FIRST, then record in Mongo, so a Mongo outage
 //      never delays or prevents protection. One `action` log line each (§14.1).
+//   4. Publish to the in-process bus for the console (ARCH §9.3):
+//      incident.created/updated, action.applied, block.added.
 //
 // Every outcome is recorded as an action, including skips.
 
@@ -13,6 +15,7 @@ import { ulid } from 'ulid';
 
 import { FP_STORM_KEY, KEYS } from '../defender.constant.js';
 import { checkSafeguards, computeTtl } from './safeguard.service.js';
+import { toBlockItem } from './block.service.js';
 import { blockAction } from '../actions/block.action.js';
 import { throttleAction } from '../actions/throttle.action.js';
 
@@ -24,7 +27,7 @@ export const defaultHandlers = { throttle: throttleAction, block: blockAction };
 
 const maxSeverity = (a, b) => ((SEVERITY_RANK[b] ?? 0) > (SEVERITY_RANK[a] ?? 0) ? b : a);
 
-export const createRemediation = ({ redis, mongo, env, log, now = Date.now, handlers = defaultHandlers }) => {
+export const createRemediation = ({ redis, mongo, env, log, bus = null, now = Date.now, handlers = defaultHandlers }) => {
   const writeMongo = async (what, fn) => {
     if (!mongo) return;
     try {
@@ -121,7 +124,8 @@ export const createRemediation = ({ redis, mongo, env, log, now = Date.now, hand
           expiresAt: expiresAt ? new Date(expiresAt) : null,
           ttlMs,
           strike,
-          latencyMs: appliedAt ? appliedAt - event.ts : null,
+          ttdMs: detectedAt - event.ts, // TTD: trigger event → detected (ARCH §14.2)
+          latencyMs: appliedAt ? appliedAt - event.ts : null, // TTR: trigger event → applied
           ...(error ? { error } : {}),
         };
         actions.push(action);
@@ -212,6 +216,31 @@ export const createRemediation = ({ redis, mongo, env, log, now = Date.now, hand
           }
         );
       });
+
+      if (bus) {
+        try {
+          const incident = mongo ? await mongo.incidents.findOne({ _id: incidentId }) : null;
+          if (incident) bus.emit(created ? 'incident.created' : 'incident.updated', incident);
+          for (const a of actions) bus.emit('action.applied', a);
+          const at = now();
+          for (const a of actions) {
+            if (!ENFORCED.has(a.result) || !a.expiresAt) continue;
+            bus.emit(
+              'block.added',
+              toBlockItem({
+                level: a.type === 'block' ? 'block' : 'throttle',
+                scope: a.scope,
+                subject,
+                value: { rule: rule.id, actionId: a._id, incidentId },
+                ttlMs: Math.max(0, a.expiresAt.getTime() - at),
+                now: at,
+              })
+            );
+          }
+        } catch (err) {
+          log.warn({ msg: 'realtime.publish_failed', error: err?.message?.slice(0, 200) });
+        }
+      }
 
       return { incidentId, created, actions };
     },

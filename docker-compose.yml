@@ -69,6 +69,7 @@ services:
     build: { context: ., dockerfile: backend/defender/Dockerfile }
     environment:
       KAIRO_ENV: staging
+      KAIRO_BIND_HOST: 0.0.0.0                         # in-container; host side is published on 127.0.0.1 only
       KAIRO_PORT: ${KAIRO_PORT:-7070}
       KAIRO_REDIS_URL: redis://redis:6379
       KAIRO_MONGO_URI: mongodb://kairo_defender:${KAIRO_DB_PASSWORD}@mongo:27017/kairo
