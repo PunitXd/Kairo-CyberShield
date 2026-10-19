@@ -4,8 +4,8 @@
 FROM node:22-alpine
 ENV NODE_ENV=production
 WORKDIR /app
-COPY defender/package.json defender/package.json
-COPY defender/src defender/src
+COPY backend/defender/package.json backend/defender/package.json
+COPY backend/defender/src backend/defender/src
 USER node
 EXPOSE 7070
-CMD ["node", "defender/src/index.js"]
+CMD ["node", "backend/defender/src/index.js"]

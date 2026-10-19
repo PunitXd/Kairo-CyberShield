@@ -1,6 +1,6 @@
 .env
 node_modules/
-defender/public/
-dashboard/dist/
+backend/defender/public/
+frontend/dist/
 .DS_Store
 env/*.env

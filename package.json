@@ -8,9 +8,7 @@
     "node": ">=22"
   },
   "workspaces": [
-    "packages/*",
-    "hooks",
-    "defender",
+    "backend/*",
     "attacks"
   ],
   "scripts": {

@@ -65,7 +65,7 @@ services:
     restart: unless-stopped
 
   kairo-defender:
-    build: { context: ., dockerfile: defender/Dockerfile }
+    build: { context: ., dockerfile: backend/defender/Dockerfile }
     environment:
       KAIRO_ENV: staging
       KAIRO_PORT: ${KAIRO_PORT:-7070}
