@@ -1,0 +1,5 @@
+# One hostname per line (# starts a comment). The attack scripts already allow
+# localhost, loopback and private (RFC 1918 / unique-local) addresses, which
+# covers the Compose service names and a LAN demo laptop. This file is only a
+# place to note extra private hosts; it can never allow a public host or
+# cypherfy.in — those are refused no matter what.

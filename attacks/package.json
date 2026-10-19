@@ -3,5 +3,8 @@
   "private": true,
   "version": "0.1.0",
   "description": "Demo attack scripts. Refuse any target that is not localhost, a private LAN address or a Compose service.",
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"**/*.test.js\""
+  }
 }
