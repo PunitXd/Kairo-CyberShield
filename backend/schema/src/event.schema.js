@@ -15,11 +15,11 @@ import { AUTH_ROUTES, MAX_SOCKET_EVENT_NAMES, ROOM_ERRORS, SCHEMA_VERSION, SCOPE
 
 export const zHex16 = z.string().regex(/^[0-9a-f]{16}$/, 'expected a 16-hex hash');
 // Socket.io ids are random base64url, not personal (ARCH §5.2).
-const zSocketId = z.string().regex(/^[A-Za-z0-9_-]{1,32}$/, 'expected a Socket.io id');
+export const zSocketId = z.string().regex(/^[A-Za-z0-9_-]{1,32}$/, 'expected a Socket.io id');
 // Socket event names are chosen by the client, so only identifier-like names
 // fit: an attacker can't smuggle message text in through an event name.
 const zEventName = z.string().regex(/^[A-Za-z][A-Za-z0-9_:.-]{0,31}$/, 'expected an event name');
-const zUlid = z.string().regex(/^[0-9A-HJKMNP-TV-Z]{26}$/, 'expected a ulid');
+export const zUlid = z.string().regex(/^[0-9A-HJKMNP-TV-Z]{26}$/, 'expected a ulid');
 
 const srcFields = {
   ipHash: zHex16,

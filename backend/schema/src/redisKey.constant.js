@@ -28,6 +28,8 @@ const checkFamily = (f) => {
 export const KEYS = {
   /** Stream: hooks XADD, Defender XREADGROUP (group `defender`). */
   events: 'kairo:events',
+  /** Pub/sub: Defender → hooks commands (disconnect_socket, throttle_socket). */
+  commands: 'kairo:commands',
   /** Sorted set of active automatic blocks: member `{scope}:{subject}`, score expiresAt. */
   blocksActive: 'kairo:blocks:active',
   /** Global kill switch: when set, every rule acts as shadow. */

@@ -31,7 +31,9 @@ export const createConsumer = ({ redis, runner, log, getStaleMs, now = Date.now,
       const parsed = fromStreamFields(fields);
       if (!parsed.success) {
         stats.invalid++;
-        const issues = (parsed.error?.issues ?? []).map((i) => `${i.path.join('.')}:${i.code}`).slice(0, 5);
+        // Keep only schema-like path segments: a key such as a socket event name is client data.
+        const segment = (p) => (typeof p === 'number' || /^[a-z][A-Za-z]{0,23}$/.test(String(p)) ? p : '*');
+        const issues = (parsed.error?.issues ?? []).map((i) => `${i.path.map(segment).join('.')}:${i.code}`).slice(0, 5);
         log.warn({ msg: 'event.invalid', id, issues: issues.length ? issues : [parsed.error?.message] });
         continue;
       }

@@ -58,3 +58,35 @@ test('a Redis outage is logged once as redis.down and once as redis.up, and a lo
   assert.equal(handled.length, 1, 'the event after recovery is processed');
   assert.deepEqual(acked, ['1-0']);
 });
+
+test('an invalid event is logged by field path only, with client-chosen keys masked', async () => {
+  const bad = {
+    ts: Date.now(),
+    type: 'socket.rate',
+    env: 'staging',
+    inst: 'cypherfy-backend-1',
+    src: { ipHash: '3e9a5b0c1d2e44c1', client: 'web', authed: false, socketId: 'abc' },
+    sock: { counts: { 'meet me at noon': 1 }, total: 1, windowMs: 1000 },
+  };
+  let consumer;
+  let served = false;
+  const redis = {
+    xgroup: async () => {},
+    xack: async () => {},
+    xreadgroup: async (...args) => {
+      if (args.at(-1) === '0') return null;
+      if (served) {
+        consumer.stop();
+        return null;
+      }
+      served = true;
+      return [['kairo:events', [['1-0', ['v', '1', 'e', JSON.stringify(bad)]]]]];
+    },
+  };
+  const log = recordingLog();
+  consumer = createConsumer({ redis, runner: { handle: async () => {} }, log, getStaleMs: () => 60_000, retryMs: 1 });
+  await consumer.run();
+  const line = log.lines.find((l) => l.msg === 'event.invalid');
+  assert.deepEqual(line.issues, ['sock.counts.*:invalid_key']);
+  assert.ok(!JSON.stringify(log.lines).includes('noon'));
+});

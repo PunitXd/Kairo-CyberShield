@@ -1,25 +1,52 @@
-// cypherfy-hooks entry point. CypherFy's whole integration:
+// cypherfy-hooks entry point. CypherFy's whole integration (ARCH §3.1):
 //
-//   index.js:  import { initKairo } from './kairo/index.js';
-//              .then(() => initKairo())             // after connectRedis()
-//   app.js:    import { kairoMiddleware } from './kairo/index.js';
-//              app.use(kairoMiddleware);            // after cookieParser()
+//   index.js:          import { initKairo } from './kairo/index.js';
+//                      .then(() => initKairo())             // after connectRedis()
+//   app.js:            import { kairoMiddleware } from './kairo/index.js';
+//                      app.use(kairoMiddleware);            // after cookieParser()
+//   socket/index.js:   import { kairoSocket } from '../kairo/index.js';
+//                      kairoSocket(io);                     // after CypherFy's io.use(auth)
+//   room.handler.js,   import { denyJoin } from '../../kairo/index.js';
+//   knock.handler.js:  if (await denyJoin(socket, code)) return;   // before Room.findOne
 //
-// kairoMiddleware is registered when app.js loads, before initKairo() runs, so
-// it passes everything through until initKairo() succeeds. Misconfiguration
-// (KAIRO_ENABLED not "true", missing secret or Redis URL) leaves the hooks as a
-// no-op and logs `kairo.disabled` once (ARCH §13).
+// Every entry point is a pass-through until initKairo() succeeds.
+// Misconfiguration (KAIRO_ENABLED not "true", missing secret or Redis URL)
+// leaves the hooks as a no-op and logs `kairo.disabled` once (ARCH §13).
 
 import { createHasher } from './schema/index.js';
 import { DEFAULT_TIMEOUT_MS, createRedis } from './redis.service.js';
 import { createEmitter } from './emitter.service.js';
 import { createHttpMiddleware } from './http.middleware.js';
+import { attachSocketLayer, createSocketLayer } from './socket.middleware.js';
+import { createJoinGuard } from './joinGuard.service.js';
+import { createCommandService } from './command.service.js';
 import { createLogger, logInfo } from './utils/logger.js';
 
 const ENVS = ['staging', 'production', 'local'];
 
 let middleware = null;
 let started = false;
+let context = null; // set once initKairo() succeeds
+let io = null; // set by kairoSocket()
+let socketLayer = null;
+let joinGuard = null;
+
+// The socket side needs both the init context and CypherFy's io; whichever
+// arrives second starts it.
+const startSocketSide = () => {
+  if (!context || !io || socketLayer) return;
+  try {
+    socketLayer = createSocketLayer({ io, ...context });
+    joinGuard = createJoinGuard({ layer: socketLayer, ...context });
+    const subscriber = context.redis.duplicate();
+    subscriber.on('error', () => context.log('kairo.redis_unavailable', { op: 'subscriber' }));
+    createCommandService({ subscriber, layer: socketLayer, ...context }).start();
+  } catch (err) {
+    socketLayer = null;
+    joinGuard = null;
+    logInfo('kairo.socket_disabled', { reason: 'init failed', error: err?.message?.slice(0, 120) });
+  }
+};
 
 export const initKairo = async ({ env = process.env } = {}) => {
   if (started) return;
@@ -44,9 +71,12 @@ export const initKairo = async ({ env = process.env } = {}) => {
     const emitter = createEmitter({ redis, timeoutMs, log });
 
     middleware = createHttpMiddleware({ redis, emitter, hasher, env: env.KAIRO_ENV, inst, timeoutMs, log });
+    context = { redis, emitter, hasher, env: env.KAIRO_ENV, inst, timeoutMs, log };
+    startSocketSide();
     logInfo('kairo.enabled', { env: env.KAIRO_ENV, inst, timeoutMs, enforce: env.KAIRO_ENV !== 'production' });
   } catch (err) {
     middleware = null;
+    context = null;
     logInfo('kairo.disabled', { reason: 'init failed', error: err?.message?.slice(0, 120) });
   }
 };
@@ -56,3 +86,18 @@ export const kairoMiddleware = (req, res, next) => {
   if (!middleware) return next();
   return middleware(req, res, next);
 };
+
+/** Attach the socket guard, observers and command handling to CypherFy's io. */
+export const kairoSocket = (ioInstance) => {
+  try {
+    if (io) return;
+    io = ioInstance;
+    attachSocketLayer(io, () => socketLayer);
+    startSocketSide();
+  } catch (err) {
+    logInfo('kairo.socket_disabled', { reason: 'attach failed', error: err?.message?.slice(0, 120) });
+  }
+};
+
+/** True when Kairo refused this join (the reply is already sent); false otherwise, including on any error. */
+export const denyJoin = async (socket, code) => (joinGuard ? joinGuard(socket, code) : false);

@@ -49,6 +49,26 @@ test('ALLOWLIST: an event carrying any non-allowlisted field is never written', 
   }
 });
 
+test('ALLOWLIST: socket events cannot carry payloads, message text or raw codes either', async () => {
+  const src = { ...event.src, socketId: 'f21c9Qk3xY0aBcD' };
+  const rate = { ts: event.ts, type: 'socket.rate', env: 'staging', inst: 'cypherfy-backend-1', src, sock: { counts: { send_message: 2 }, total: 2, windowMs: 1000 } };
+  const smuggled = [
+    { ...rate, sock: { ...rate.sock, payload: 'hello' } },
+    { ...rate, ciphertext: 'AAEC' },
+    { ...rate, sock: { ...rate.sock, counts: { 'hello there friend': 1 } } },
+    { ...rate, type: 'socket.invalid_payload', sock: { event: 'send_message', payload: 'hello' } },
+    { ...rate, type: 'room.join.invalid', sock: undefined, room: { codeHash: 'XK9PLM', kind: 'ephemeral', via: 'socket' } },
+    { ...rate, type: 'room.join.invalid', sock: undefined, room: { codeHash: '3e9a5b0c1d2e44c1', kind: 'ephemeral', via: 'socket', code: 'XK9PLM' } },
+  ];
+  for (const bad of smuggled) {
+    const { redis, logs, emitter } = setup();
+    assert.equal(await emitter.emit(bad), false, JSON.stringify(Object.keys(bad)));
+    assert.equal(redis.xadds.length, 0, 'nothing reaches Redis');
+    const logged = JSON.stringify(logs);
+    for (const raw of ['hello', 'AAEC', 'XK9PLM']) assert.ok(!logged.includes(raw), `the log must not repeat ${raw}`);
+  }
+});
+
 test('emit never throws when Redis is down or hangs', async () => {
   for (const mode of ['down', 'hang']) {
     const { emitter, logs } = setup(mode);

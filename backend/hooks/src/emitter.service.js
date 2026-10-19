@@ -14,7 +14,10 @@ export const createEmitter = ({ redis, timeoutMs, log }) => ({
       fields = toStreamFields(event);
     } catch (err) {
       // Paths and codes only: the rejected values may be exactly what must not leak.
-      const issues = (err?.issues ?? []).map((i) => `${i.path.join('.') || '(root)'}:${i.code}`).slice(0, 5);
+      // A path can itself hold client data (a socket.rate counts key is an
+      // event name the client chose), so only schema-like segments are kept.
+      const segment = (p) => (typeof p === 'number' || /^[a-z][A-Za-z]{0,23}$/.test(String(p)) ? p : '*');
+      const issues = (err?.issues ?? []).map((i) => `${i.path.map(segment).join('.') || '(root)'}:${i.code}`).slice(0, 5);
       log('kairo.event_invalid', { issues });
       return false;
     }
