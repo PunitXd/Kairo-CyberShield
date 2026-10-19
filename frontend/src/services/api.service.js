@@ -47,3 +47,9 @@ export const deleteBlock = (scope, subject) =>
 
 /** Restore an unblock → { restored }. The server honours the token for 30 s (the toast shows for 10 s, longer while hovered); 410 UNDO_EXPIRED after that. */
 export const undoUnblock = (undoToken) => request('POST', '/api/blocks/undo', { body: { undoToken } });
+
+/** The event contract: fields received and things never received. */
+export const getSchema = () => request('GET', '/api/schema');
+
+/** The newest raw events, straight from the stream → { items }. */
+export const getEventSample = (limit = 20) => request('GET', '/api/events/sample', { params: { limit } });

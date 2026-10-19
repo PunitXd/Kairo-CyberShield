@@ -608,3 +608,142 @@
     animation: none;
   }
 }
+
+/* ---- Privacy (S8 Metadata contract) ---- */
+
+.privacy__lead {
+  margin: 0 0 var(--space-6);
+  color: var(--text-2);
+  max-width: 80ch;
+}
+.privacy__lead strong {
+  color: var(--accent);
+}
+.privacy__hashing {
+  color: var(--text-3);
+}
+.privacy-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+  margin-bottom: var(--space-6);
+}
+@media (max-width: 1279px) {
+  .privacy-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.contract {
+  width: 100%;
+  border-collapse: collapse;
+}
+.contract th {
+  text-align: left;
+  font-size: var(--type-label);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-3);
+  padding: 0 var(--space-3) var(--space-2);
+  border-bottom: 1px solid var(--border);
+}
+.contract td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.contract tr:last-child td {
+  border-bottom: none;
+}
+.contract__field {
+  color: var(--text-1);
+}
+.contract__optional {
+  font-size: var(--type-label);
+  color: var(--text-3);
+}
+.contract__note {
+  display: block;
+  font-size: var(--type-label);
+  color: var(--text-3);
+}
+.contract__type,
+.contract__carried,
+.contract__example {
+  color: var(--text-2);
+  word-break: break-word;
+}
+
+.never {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.never__item {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  column-gap: var(--space-2);
+  align-items: baseline;
+}
+.never__icon {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: var(--text-3);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.never__name {
+  text-decoration: line-through; /* excluded: strikethrough + slash icon, not just grey */
+  color: var(--text-2);
+}
+.never__note {
+  grid-column: 2;
+  font-size: var(--type-label);
+  color: var(--text-3);
+}
+
+.sample__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.sample__status {
+  font-size: var(--type-label);
+  color: var(--text-3);
+}
+.sample__status--paused {
+  color: var(--accent);
+}
+.sample__check {
+  margin: 0 0 var(--space-3);
+  font-size: var(--type-label);
+  color: var(--act-resolved);
+}
+.sample__check--bad {
+  color: var(--act-failed);
+  font-weight: 600;
+}
+.sample__events {
+  margin: 0;
+  padding: var(--space-3);
+  max-height: 420px;
+  overflow: auto;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+  white-space: pre;
+  line-height: 1.6;
+}
+.privacy__scope {
+  margin: var(--space-6) 0 0;
+  font-size: var(--type-label);
+  color: var(--text-3);
+}

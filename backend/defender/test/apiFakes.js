@@ -5,13 +5,15 @@
 
 import { request } from 'node:http';
 
-export const fakeRedis = ({ keys = {}, down = false } = {}) => {
+export const fakeRedis = ({ keys = {}, down = false, stream = [] } = {}) => {
   // keys: { 'kairo:block:auth:<hash>': { value: '{...}', pttl: 299000 } }
   const fail = () => Promise.reject(new Error('redis down'));
   const matches = (pattern, k) => new RegExp(`^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`).test(k);
   return {
     keys,
     ping: () => (down ? fail() : Promise.resolve('PONG')),
+    // stream: [[id, fields], ...] oldest first, like XRANGE; XREVRANGE returns newest first.
+    xrevrange: (_key, _end, _start, _count, n) => (down ? fail() : Promise.resolve([...stream].reverse().slice(0, Number(n)))),
     get: (k) => (down ? fail() : Promise.resolve(keys[k]?.value ?? null)),
     scan: (_cursor, _m, pattern) =>
       down ? fail() : Promise.resolve(['0', Object.keys(keys).filter((k) => matches(pattern, k))]),
