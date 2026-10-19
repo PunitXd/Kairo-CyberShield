@@ -1,8 +1,8 @@
 import { fileURLToPath } from 'node:url';
 
-import { loadRulesConfig } from '../src/config.js';
-import { WindowStore } from '../src/engine/windows.js';
-import { createRunner } from '../src/engine/runner.js';
+import { loadRulesConfig } from '../src/defender.config.js';
+import { WindowStore } from '../src/utils/WindowStore.js';
+import { createRuleRunner } from '../src/services/ruleRunner.service.js';
 import { rules } from '../src/rules/index.js';
 
 export const CONFIG = loadRulesConfig(fileURLToPath(new URL('../config/rules.json', import.meta.url)));
@@ -31,7 +31,7 @@ export const authFail = ({ ts, ip = IP_A, route = 'login', account = (n++ % 20).
 /** A runner over the real rules that records decisions instead of acting. */
 export const recordingRunner = (config = CONFIG) => {
   const decisions = [];
-  const runner = createRunner({
+  const runner = createRuleRunner({
     rules,
     windows: new WindowStore(),
     getConfig: () => config,

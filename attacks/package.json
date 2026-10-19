@@ -1,5 +1,5 @@
 {
-  "name": "@kairo/attacks",
+  "name": "kairo-attacks",
   "private": true,
   "version": "0.1.0",
   "description": "Demo attack scripts. Refuse any target that is not localhost, a private LAN address or a Compose service.",

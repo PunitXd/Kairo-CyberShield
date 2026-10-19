@@ -11,7 +11,7 @@ COPY backend/schema/package.json backend/schema/
 COPY backend/hooks/package.json backend/hooks/
 COPY backend/defender/package.json backend/defender/
 COPY attacks/package.json attacks/
-RUN npm ci --omit=dev --workspace=@kairo/defender --include-workspace-root=false && npm cache clean --force
+RUN npm ci --omit=dev --workspace=kairo-defender --include-workspace-root=false && npm cache clean --force
 
 COPY backend/schema/src backend/schema/src
 COPY backend/defender/src backend/defender/src

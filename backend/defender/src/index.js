@@ -3,13 +3,13 @@
 
 import Redis from 'ioredis';
 
-import { createConfigStore, readEnv } from './config.js';
-import { createLogger } from './log.js';
-import { connectMongo } from './store/mongo.js';
-import { WindowStore } from './engine/windows.js';
-import { createRunner } from './engine/runner.js';
-import { createConsumer } from './engine/consumer.js';
-import { createRemediation } from './actions/index.js';
+import { createConfigStore, readEnv } from './defender.config.js';
+import { createLogger } from './utils/logger.js';
+import connectDB from './db/index.js';
+import { WindowStore } from './utils/WindowStore.js';
+import { createRuleRunner } from './services/ruleRunner.service.js';
+import { createConsumer } from './services/consumer.service.js';
+import { createRemediation } from './services/remediation.service.js';
 import { rules } from './rules/index.js';
 
 const SWEEP_MS = 30_000;
@@ -39,13 +39,13 @@ const boot = async () => {
     client.on('error', (err) => log.warn({ msg: `${name}.error`, error: err.message }));
   }
 
-  const mongo = await connectMongo(env.mongoUri);
+  const mongo = await connectDB(env.mongoUri);
 
   const windows = new WindowStore();
   setInterval(() => windows.sweep(Date.now()), SWEEP_MS).unref();
 
   const remediation = createRemediation({ redis, mongo, env: env.env, log });
-  const runner = createRunner({
+  const runner = createRuleRunner({
     rules,
     windows,
     getConfig: configStore.get,

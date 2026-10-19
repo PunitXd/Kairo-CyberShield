@@ -1,5 +1,5 @@
 {
-  "name": "@kairo/defender",
+  "name": "kairo-defender",
   "private": true,
   "version": "0.1.0",
   "description": "Kairo Shield Defender: detection engine, remediation actions, console API.",
@@ -10,7 +10,7 @@
     "test": "node --test \"test/**/*.test.js\""
   },
   "dependencies": {
-    "@kairo/schema": "*",
+    "kairo-schema": "*",
     "ioredis": "5.11.1",
     "mongodb": "7.7.0",
     "pino": "10.4.0",

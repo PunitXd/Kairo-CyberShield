@@ -14,13 +14,13 @@
   "scripts": {
     "stack:up": "docker compose up -d --build",
     "stack:down": "docker compose down",
-    "seed": "node --env-file=.env scripts/seed-cypherfy.js",
-    "sync-hooks": "bash scripts/sync-hooks.sh",
-    "tail": "node scripts/tail-events.js",
+    "seed": "node --env-file=.env scripts/seedCypherfy.js",
+    "hooks:sync": "bash scripts/syncHooks.sh",
+    "tail": "node scripts/tailEvents.js",
     "test": "npm test --workspaces --if-present"
   },
   "devDependencies": {
-    "@kairo/schema": "*",
+    "kairo-schema": "*",
     "ioredis": "5.11.1"
   }
 }

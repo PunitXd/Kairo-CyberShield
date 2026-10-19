@@ -1,5 +1,5 @@
 {
-  "name": "@kairo/schema",
+  "name": "kairo-schema",
   "private": true,
   "version": "0.1.0",
   "description": "SecurityEvent schema v1, identifier hashing and Redis key names shared by the hooks and the Defender.",
@@ -9,7 +9,7 @@
     ".": "./src/index.js"
   },
   "scripts": {
-    "test": "node --test"
+    "test": "node --test \"test/**/*.test.js\""
   },
   "dependencies": {
     "zod": "4.4.3"
