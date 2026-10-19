@@ -1,6 +1,11 @@
 // S1 Overview (BRIEF §6): KPI strip → incident feed → active blocks rail.
 // The feed explains, the rail is where you reverse. Event-rate sparklines are
-// first on the cut list (PHASES §4) and not built.
+// first on the cut list (PHASES §4) and not built. The incident drawer
+// (/incidents/:id) renders through <Outlet>, so this screen stays mounted and
+// live underneath it.
+
+import { useState } from 'react';
+import { Outlet, useMatch, useNavigate } from 'react-router';
 
 import KpiTile from '../../components/KpiTile.jsx';
 import IncidentRow from '../../components/IncidentRow.jsx';
@@ -26,6 +31,28 @@ export default function Overview() {
   const throttles = activeBlocks.length - hardBlocks.length;
   const blockedSources = new Set(hardBlocks.map((b) => b.subject)).size;
   const announcement = useFeedAnnouncer(incidents, blockedSources);
+
+  const navigate = useNavigate();
+  const selectedId = useMatch('/incidents/:id')?.params.id ?? null;
+  const [focusIndex, setFocusIndex] = useState(0);
+  const openIncident = (id) => navigate(`/incidents/${id}`);
+
+  // Feed keyboard (BRIEF §10): one tab stop, ↑/↓ or j/k move, Enter opens.
+  const onFeedKey = (e) => {
+    const rows = [...e.currentTarget.querySelectorAll('tr[data-incident-id]')];
+    const i = rows.indexOf(document.activeElement);
+    if (i === -1) return;
+    const move = { ArrowDown: 1, j: 1, ArrowUp: -1, k: -1 }[e.key];
+    if (move) {
+      e.preventDefault();
+      const next = Math.max(0, Math.min(rows.length - 1, i + move));
+      setFocusIndex(next);
+      rows[next].focus();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      openIncident(rows[i].dataset.incidentId);
+    }
+  };
 
   const tileState = (value) => (!loaded ? 'loading' : stale ? 'stale' : value === null || value === undefined ? 'empty' : 'live');
   const rules = enforcingRules(status);
@@ -100,7 +127,7 @@ export default function Overview() {
                     </th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody onKeyDown={onFeedKey}>
                   {incidents.map((incident, i) => (
                     <IncidentRow
                       key={incident._id}
@@ -109,6 +136,10 @@ export default function Overview() {
                       now={now}
                       isNew={freshIds.has(incident._id)}
                       isLatest={i === 0}
+                      selected={incident._id === selectedId}
+                      tabIndex={i === Math.min(focusIndex, incidents.length - 1) ? 0 : -1}
+                      onOpen={openIncident}
+                      onFocus={() => setFocusIndex(i)}
                     />
                   ))}
                 </tbody>
@@ -140,6 +171,8 @@ export default function Overview() {
           )}
         </aside>
       </div>
+
+      <Outlet context={{ incidents, blocks, now, stale, removeBlocksFor }} />
 
       <div role="status" aria-live="polite" className="visually-hidden">
         {announcement}

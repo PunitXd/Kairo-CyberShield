@@ -19,3 +19,6 @@ export const formatCountdown = (ms) => {
   const ss = String(s).padStart(2, '0');
   return h ? `${h}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
 };
+
+/** Rule windows for sentences: 60000 → "60 s", 300000 → "5 min". */
+export const describeWindow = (ms) => (ms < 120_000 ? `${Math.round(ms / 1000)} s` : `${Math.round(ms / 60_000)} min`);

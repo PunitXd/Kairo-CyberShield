@@ -1,0 +1,142 @@
+// S2 Incident detail (BRIEF §6): headline sentence → action bar → timeline →
+// evidence → Fields received. Opened at /incidents/:id over the Overview,
+// which stays mounted and live underneath. Unblock is the primary action
+// while a block or throttle is active. Extend and Mark false positive are cut
+// from the Demo MVP (PHASES §1). Esc returns focus to the row that opened it.
+
+import { useCallback } from 'react';
+import { useNavigate, useOutletContext, useParams } from 'react-router';
+
+import Drawer from '../../components/Drawer.jsx';
+import SeverityGlyph from '../../components/SeverityGlyph.jsx';
+import ActionPill from '../../components/ActionPill.jsx';
+import Countdown from '../../components/Countdown.jsx';
+import Timeline from '../../components/Timeline.jsx';
+import FieldChips from '../../components/FieldChips.jsx';
+import EmptyState from '../../components/EmptyState.jsx';
+import { useIncidentDetail } from '../../hooks/useIncidentDetail.js';
+import { useUnblock } from '../../hooks/useUnblock.js';
+import { deriveActionState, SCOPE_LABEL } from '../../utils/incidentState.js';
+import { formatHash } from '../../utils/formatHash.js';
+import { describeWindow } from '../../utils/formatDuration.js';
+
+const VERB = { blocked: 'Blocked', throttled: 'Throttled' };
+
+const headline = (incident, action) => {
+  const who = formatHash('ip', incident.subject);
+  const why = incident.summary;
+  if (VERB[action.state]) return `${VERB[action.state]} ${who} from ${SCOPE_LABEL[action.scope] ?? action.scope} after ${why}`;
+  if (action.state === 'shadow') return `Would have acted on ${who} after ${why}`;
+  return `${who}: ${why} (${action.reason === 'manually' ? 'unblocked by the operator' : 'expired'})`;
+};
+
+function UnblockButton({ scope, subject, disabled, onUnblocked }) {
+  const { state, error, unblock, label } = useUnblock({ scope, subject, onUnblocked });
+  const busy = state === 'unblocking';
+  return (
+    <>
+      <button
+        type="button"
+        className="btn btn--primary"
+        onClick={unblock}
+        disabled={busy || disabled}
+        aria-busy={busy || undefined}
+        aria-label={`Unblock ${label}`}
+        title={disabled ? 'The Defender is unreachable; actions are paused' : undefined}
+      >
+        {busy ? 'Unblocking…' : state === 'failed' ? 'Retry unblock' : 'Unblock'}
+      </button>
+      {state === 'failed' && (
+        <p className="block-card__error" role="alert">
+          Unblock failed: {error}
+        </p>
+      )}
+    </>
+  );
+}
+
+export default function IncidentDrawer() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { incidents, blocks, now, stale, removeBlocksFor } = useOutletContext();
+  const { detail, error, loading, reload } = useIncidentDetail(id);
+
+  // Header renders instantly from the feed row; the detail fills in the rest.
+  const incident = detail?.incident ?? incidents.find((i) => i._id === id);
+
+  const close = useCallback(() => {
+    navigate('/');
+    requestAnimationFrame(() => document.querySelector(`tr[data-incident-id="${id}"]`)?.focus());
+  }, [navigate, id]);
+
+  if (!incident) {
+    return (
+      <Drawer title="Incident" onClose={close}>
+        {loading ? <EmptyState>Loading…</EmptyState> : <EmptyState hint={error?.message}>Could not load this incident.</EmptyState>}
+      </Drawer>
+    );
+  }
+
+  const action = deriveActionState(incident, blocks, now);
+  const active = action.state === 'blocked' || action.state === 'throttled';
+  const ev = incident.evidence ?? {};
+  const distinctNoun = incident.family === 'room' ? 'distinct codes' : 'distinct accounts';
+
+  return (
+    <Drawer title={headline(incident, action)} onClose={close}>
+      <div className="drawer__meta">
+        <SeverityGlyph level={incident.severity} />
+        <span className="mono drawer__rule">
+          {incident.ruleId}
+          {incident.ruleVersion ? ` v${incident.ruleVersion}` : ''}
+        </span>
+        <ActionPill state={action.state} scope={action.scope} reason={action.reason} />
+        <Countdown expiresAt={action.expiresAt} now={now} />
+      </div>
+
+      {active && (
+        <div className="drawer__actions">
+          <UnblockButton scope={action.scope} subject={incident.subject} disabled={stale} onUnblocked={(b) => removeBlocksFor(b.scope, b.subject)} />
+        </div>
+      )}
+
+      <section className="drawer__section" aria-labelledby="timeline-title">
+        <h3 id="timeline-title" className="drawer__section-title">
+          Timeline
+        </h3>
+        {detail ? (
+          <Timeline steps={detail.timeline} />
+        ) : error ? (
+          <EmptyState hint={error.message}>
+            Could not load the timeline.{' '}
+            <button type="button" className="btn btn--secondary" onClick={reload}>
+              Retry
+            </button>
+          </EmptyState>
+        ) : (
+          <div className="skeleton skeleton--block" aria-label="Loading timeline" />
+        )}
+      </section>
+
+      <section className="drawer__section" aria-labelledby="evidence-title">
+        <h3 id="evidence-title" className="drawer__section-title">
+          Evidence
+        </h3>
+        <p className="drawer__evidence">
+          Observed <strong>{ev.observed ?? '—'}</strong> against a threshold of <strong>{ev.threshold ?? '—'}</strong>
+          {ev.windowMs ? ` in ${describeWindow(ev.windowMs)}` : ''}
+          {Number.isFinite(ev.distinct) ? ` · ${ev.distinct} ${distinctNoun}` : ''}
+          {Number.isFinite(ev.softFirings) && ev.softFirings > 0 ? ` · soft step fired ${ev.softFirings}×` : ''}
+        </p>
+      </section>
+
+      <section className="drawer__section" aria-labelledby="fields-title">
+        <h3 id="fields-title" className="drawer__section-title">
+          Fields received
+        </h3>
+        <FieldChips fields={incident.fieldsUsed} />
+        <p className="empty-state__hint">Field names only. Kairo never receives message text, keys, raw room codes, raw IPs or emails.</p>
+      </section>
+    </Drawer>
+  );
+}

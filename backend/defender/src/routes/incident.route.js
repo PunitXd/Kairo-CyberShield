@@ -2,10 +2,11 @@
 
 import { Router } from 'express';
 
-import { listIncidents } from '../controllers/incident.controller.js';
+import { getIncident, listIncidents } from '../controllers/incident.controller.js';
 
 const router = Router();
 
 router.get('/', listIncidents);
+router.get('/:id', getIncident);
 
 export default router;

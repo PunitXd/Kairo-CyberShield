@@ -155,3 +155,27 @@ test('no response ever contains a raw IP address', async () => {
     assert.ok(!/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/.test(JSON.stringify(body)), path);
   }
 });
+
+test('GET /api/incidents/:id returns the incident, its actions and a timeline', async () => {
+  const id = incidents[0]._id;
+  deps.mongo.actions.docs.push({
+    _id: 'act-1', incidentId: id, ruleId: 'R1b', type: 'block', scope: 'auth', result: 'applied', ttlMs: 300_000,
+    summary: '10 failed logins in 5 min across 9 accounts', triggerEventTs: NOW - 10_000,
+    requestedAt: new Date(NOW - 9_990), appliedAt: new Date(NOW - 9_980), expiresAt: new Date(NOW + 290_000), ttdMs: 10, latencyMs: 20,
+  });
+  const { status, body } = await rawGet(port, `/api/incidents/${id}`);
+  assert.equal(status, 200);
+  assert.equal(body.incident._id, id);
+  assert.deepEqual(body.actions.map((a) => a._id), ['act-1']);
+  assert.deepEqual(body.timeline.map((s) => s.label), ['R1b threshold crossed', 'Blocked · auth for 5 min', 'Expires']);
+  assert.equal(body.timeline[1].remediateMs, 20);
+});
+
+test('GET /api/incidents/:id → 404 for an unknown id, 400 for a malformed one', async () => {
+  assert.equal((await rawGet(port, '/api/incidents/01JAB000000000000000000099')).status, 404);
+  for (const bad of ['nope', '01jab000000000000000000001', '$where', '01JAB0000000000000000000000000']) {
+    const { status, body } = await rawGet(port, `/api/incidents/${encodeURIComponent(bad)}`);
+    assert.equal(status, 400, bad);
+    assert.equal(body.error.code, 'INVALID_QUERY');
+  }
+});

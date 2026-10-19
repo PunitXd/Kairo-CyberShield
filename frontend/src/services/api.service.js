@@ -38,6 +38,9 @@ export const getOverview = () => request('GET', '/api/overview');
 export const getIncidents = (params) => request('GET', '/api/incidents', { params });
 export const getBlocks = (params) => request('GET', '/api/blocks', { params });
 
+/** One incident with its actions and timeline → { incident, actions, timeline }. */
+export const getIncident = (id) => request('GET', `/api/incidents/${encodeURIComponent(id)}`);
+
 /** Lift every block and throttle on this scope for this source → { undoToken, undoExpiresAt, removed }. */
 export const deleteBlock = (scope, subject) =>
   request('DELETE', `/api/blocks/${encodeURIComponent(scope)}/${encodeURIComponent(subject)}`);

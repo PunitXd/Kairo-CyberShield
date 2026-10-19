@@ -400,3 +400,211 @@
 .toast__close:hover {
   color: var(--text-1);
 }
+
+/* ---- Interactive feed rows ---- */
+
+.row--interactive {
+  cursor: pointer;
+}
+.row--interactive:hover td {
+  background: var(--surface-2);
+}
+.row--interactive:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.row--selected td {
+  background: var(--surface-2);
+}
+.row--selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+/* ---- Primary button (accent fill) ---- */
+
+.btn--primary {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: var(--act-pill-text);
+  font-weight: 600;
+}
+.btn--primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.btn--primary:disabled {
+  background: transparent;
+}
+
+/* ---- Drawer: 480 px, right side, floats over content (the one shadow) ---- */
+
+.drawer {
+  position: fixed;
+  top: var(--topbar-height);
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  width: min(480px, 100vw);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-2);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-float);
+  animation: drawer-in var(--duration-fast) var(--ease-out);
+}
+@keyframes drawer-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+}
+.drawer__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 1px solid var(--border);
+}
+.drawer__title {
+  flex: 1;
+  font-size: var(--type-heading);
+  line-height: 1.35;
+}
+.drawer__title:focus {
+  outline: none;
+}
+.drawer__title:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.drawer__close {
+  border: none;
+  background: none;
+  color: var(--text-3);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.drawer__close:hover {
+  color: var(--text-1);
+}
+.drawer__body {
+  overflow-y: auto;
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.drawer__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.drawer__rule {
+  color: var(--text-2);
+}
+.drawer__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.drawer__section-title {
+  font-size: var(--type-label);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+  margin-bottom: var(--space-3);
+}
+.drawer__evidence {
+  margin: 0;
+  color: var(--text-2);
+}
+.drawer__evidence strong {
+  color: var(--text-1);
+}
+
+.skeleton--block {
+  width: 100%;
+  height: 120px;
+}
+
+/* ---- Timeline ---- */
+
+.timeline {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.timeline__step {
+  position: relative;
+  display: grid;
+  grid-template-columns: 20px 76px 1fr;
+  column-gap: var(--space-2);
+  row-gap: 2px;
+  padding-bottom: var(--space-4);
+}
+.timeline__step:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 9px;
+  top: 20px;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+.timeline__marker {
+  grid-row: span 3;
+  text-align: center;
+  color: var(--text-3);
+}
+.timeline__step--action .timeline__marker {
+  color: var(--accent);
+}
+.timeline__step--signal .timeline__marker {
+  color: var(--sev-medium);
+}
+.timeline__step--resolved .timeline__marker {
+  color: var(--act-resolved);
+}
+.timeline__step--failed .timeline__marker {
+  color: var(--act-failed);
+}
+.timeline__time {
+  color: var(--text-3);
+}
+.timeline__label {
+  font-weight: 500;
+}
+.timeline__detail,
+.timeline__latency {
+  grid-column: 3;
+  color: var(--text-3);
+  font-size: var(--type-label);
+}
+.timeline__step--pending .timeline__label {
+  color: var(--text-2);
+}
+
+/* ---- FieldChips ---- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+.chip {
+  padding: 2px var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer {
+    animation: none;
+  }
+}

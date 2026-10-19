@@ -8,6 +8,7 @@ import SideNav from './components/SideNav.jsx';
 import EmptyState from './components/EmptyState.jsx';
 import ToastHost from './components/ToastHost.jsx';
 import Overview from './screens/Overview/Overview.jsx';
+import IncidentDrawer from './screens/Overview/IncidentDrawer.jsx';
 import Blocklist from './screens/Blocklist/Blocklist.jsx';
 import Pipeline from './screens/Pipeline/Pipeline.jsx';
 import Privacy from './screens/Privacy/Privacy.jsx';
@@ -33,7 +34,9 @@ export default function App() {
         <SideNav />
         <main id="main" className="shell__main" tabIndex={-1}>
           <Routes>
-            <Route path="/" element={<Overview />} />
+            <Route path="/" element={<Overview />}>
+              <Route path="incidents/:id" element={<IncidentDrawer />} />
+            </Route>
             <Route path="/blocks" element={<Blocklist />} />
             <Route path="/pipeline" element={<Pipeline />} />
             <Route path="/privacy" element={<Privacy />} />

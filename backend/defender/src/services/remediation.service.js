@@ -124,6 +124,8 @@ export const createRemediation = ({ redis, mongo, env, log, bus = null, now = Da
           expiresAt: expiresAt ? new Date(expiresAt) : null,
           ttlMs,
           strike,
+          summary: decision.summary, // this firing's own reason, for the incident timeline
+          triggerEventTs: event.ts,
           ttdMs: detectedAt - event.ts, // TTD: trigger event → detected (ARCH §14.2)
           latencyMs: appliedAt ? appliedAt - event.ts : null, // TTR: trigger event → applied
           ...(error ? { error } : {}),
