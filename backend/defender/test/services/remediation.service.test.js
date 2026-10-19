@@ -65,3 +65,27 @@ test('skipped actions publish action.applied but no block.added', async () => {
   });
   assert.deepEqual(names, ['action.applied', 'incident.created'], 'production = shadow: nothing enforced, nothing on the rail');
 });
+
+test('with the kill switch on, a new incident is recorded as Shadow and nothing is enforced', async () => {
+  const clock = { now: T0 };
+  const redis = fakeRedis(clock);
+  await redis.set('kairo:killswitch', '{"by":"operator"}');
+  const mongo = fakeMongo();
+  const bus = new EventEmitter();
+  const seen = [];
+  bus.on('incident.created', (i) => seen.push(i.status));
+  bus.on('block.added', () => seen.push('block.added'));
+  const remediation = createRemediation({ redis, mongo, env: 'staging', log: silentLog, bus, now: () => clock.now });
+  const out = await remediation.handle({
+    rule: r1a,
+    subject: IP_A,
+    decision: { severity: 'medium', summary: 's', actions: [{ type: 'throttle', scope: 'auth', ttlMs: 300_000 }], evidence: { observed: 5, threshold: 5, windowMs: 60_000 }, fieldsUsed: [] },
+    event: authFail({ ts: clock.now - 10 }),
+    ruleCfg: CONFIG.rules.R1a,
+    config: CONFIG,
+    rules,
+  });
+  assert.equal(out.actions[0].result, 'skipped_killswitch');
+  assert.deepEqual(seen, ['shadow'], 'incident is Shadow, and nothing reaches the rail');
+  assert.equal(await redis.exists(`kairo:throttle:auth:${IP_A}`), 0);
+});

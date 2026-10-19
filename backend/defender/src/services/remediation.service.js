@@ -158,7 +158,8 @@ export const createRemediation = ({ redis, mongo, env, log, bus = null, now = Da
       }
 
       const enforced = actions.some((a) => ENFORCED.has(a.result));
-      const allShadow = actions.every((a) => a.result === 'skipped_shadow');
+      // Nothing enforced because of shadow mode OR the kill switch: a would-have-acted incident.
+      const allShadow = actions.every((a) => a.result === 'skipped_shadow' || a.result === 'skipped_killswitch');
       const actionIds = actions.map((a) => a._id);
       const seenAt = new Date(detectedAt);
 

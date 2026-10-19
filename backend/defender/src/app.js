@@ -16,6 +16,7 @@ import incidentRoutes from './routes/incident.route.js';
 import blockRoutes from './routes/block.route.js';
 import eventRoutes from './routes/event.route.js';
 import schemaRoutes from './routes/schema.route.js';
+import killSwitchRoutes from './routes/killswitch.route.js';
 import { localOnly } from './middlewares/localOnly.middleware.js';
 import { createDashboardRouter } from './middlewares/dashboard.middleware.js';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
@@ -42,6 +43,7 @@ export const createApp = (deps) => {
   app.use('/api/blocks', blockRoutes);
   app.use('/api/events', eventRoutes);
   app.use('/api/schema', schemaRoutes);
+  app.use('/api/killswitch', killSwitchRoutes);
   app.use('/api', notFoundHandler); // unknown API paths get JSON, never the page
 
   // --- Dashboard (built into backend/defender/public by the Dockerfile) ---

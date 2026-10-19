@@ -18,6 +18,7 @@ import { createBlockWatcher } from './services/block.service.js';
 import { getSystemStatus } from './services/health.service.js';
 import { createRealtime } from './services/realtime.service.js';
 import { createUnblockService } from './services/unblock.service.js';
+import { createKillSwitchService } from './services/killswitch.service.js';
 import { createApp } from './app.js';
 import { rules } from './rules/index.js';
 
@@ -81,7 +82,8 @@ const boot = async () => {
     log.warn({ msg: 'audit.no_hasher', reason: 'KAIRO_HASH_SECRET missing or short; operator IPs are not recorded' });
   }
   const unblock = createUnblockService({ redis, mongo, bus, log, hasher });
-  const deps = { redis, mongo, env: env.env, log, getConsumerStats: () => consumer.stats, getRules, unblock };
+  const killSwitch = createKillSwitchService({ redis, mongo, bus, log, hasher });
+  const deps = { redis, mongo, env: env.env, log, getConsumerStats: () => consumer.stats, getRules, unblock, killSwitch };
   const httpServer = createServer(createApp(deps));
   const realtime = createRealtime({ httpServer, bus, log, getStatus: () => getSystemStatus(deps) });
   const blockWatcher = createBlockWatcher({ redis, bus, log });

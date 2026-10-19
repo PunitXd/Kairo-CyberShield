@@ -53,3 +53,6 @@ export const getSchema = () => request('GET', '/api/schema');
 
 /** The newest raw events, straight from the stream → { items }. */
 export const getEventSample = (limit = 20) => request('GET', '/api/events/sample', { params: { limit } });
+
+/** Turn the global kill switch on or off → { on, since, changed }. */
+export const setKillSwitch = (on) => request('POST', '/api/killswitch', { body: { on } });

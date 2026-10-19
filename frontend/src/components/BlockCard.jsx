@@ -10,7 +10,7 @@ import Countdown from './Countdown.jsx';
 import HashValue from './HashValue.jsx';
 import { useUnblock } from '../hooks/useUnblock.js';
 
-export default function BlockCard({ block, now, disabled = false, onUnblocked }) {
+export default function BlockCard({ block, now, disabled = false, killSwitch = false, onUnblocked }) {
   const { state, error, unblock, label } = useUnblock({ scope: block.scope, subject: block.subject, onUnblocked });
   const busy = state === 'unblocking';
 
@@ -21,7 +21,11 @@ export default function BlockCard({ block, now, disabled = false, onUnblocked })
         <span className="block-card__rule mono">{block.rule ?? '—'}</span>
       </div>
       <div className="block-card__bottom">
-        <ActionPill state={block.level === 'block' ? 'blocked' : 'throttled'} scope={block.scope} />
+        {killSwitch ? (
+          <ActionPill state="shadow" reason="kill switch" />
+        ) : (
+          <ActionPill state={block.level === 'block' ? 'blocked' : 'throttled'} scope={block.scope} />
+        )}
         <Countdown expiresAt={block.expiresAt} now={now} />
         <button
           type="button"

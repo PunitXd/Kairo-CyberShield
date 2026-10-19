@@ -747,3 +747,80 @@
   font-size: var(--type-label);
   color: var(--text-3);
 }
+
+/* ---- Danger button (critical outline) ---- */
+
+.btn--danger {
+  background: transparent;
+  border: 1px solid var(--sev-critical);
+  color: var(--sev-critical);
+  font-weight: 600;
+}
+.btn--danger:hover:not(:disabled) {
+  background: rgba(255, 107, 97, 0.12);
+}
+
+/* ---- Kill switch + ConfirmPopover ---- */
+
+.killswitch {
+  position: relative;
+  display: inline-flex;
+}
+.popover {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 60;
+  width: 340px;
+  padding: var(--space-4);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-float);
+  animation: drawer-in var(--duration-fast) var(--ease-out);
+}
+.popover__title {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+}
+.popover__body p {
+  margin: 0 0 var(--space-3);
+  color: var(--text-2);
+}
+.popover__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+/* ---- Banner (critical band under the top bar) ---- */
+
+.banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: calc(-1 * var(--space-6)) calc(-1 * var(--space-6)) var(--space-6);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--border);
+}
+.banner__text {
+  flex: 1;
+  font-weight: 500;
+}
+.banner--critical {
+  background: rgba(255, 107, 97, 0.14);
+  border-bottom-color: var(--sev-critical);
+  color: var(--text-1);
+}
+.banner--critical .banner__text::before {
+  content: '▲ ';
+  color: var(--sev-critical); /* shape + word, not colour alone */
+}
+.banner .popover {
+  right: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .popover {
+    animation: none;
+  }
+}

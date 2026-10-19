@@ -54,6 +54,8 @@ export const createRealtime = ({ httpServer, bus, getStatus, log, statusPollMs =
   };
   const timer = setInterval(pollStatus, statusPollMs);
   timer.unref?.();
+  // An operator change (kill switch) is pushed at once, not on the next poll.
+  bus.on('system.changed', pollStatus);
 
   return {
     io,
@@ -61,6 +63,7 @@ export const createRealtime = ({ httpServer, bus, getStatus, log, statusPollMs =
     async close() {
       clearInterval(timer);
       for (const [name, fn] of forwarders) bus.off(name, fn);
+      bus.off('system.changed', pollStatus);
       await io.close();
     },
   };

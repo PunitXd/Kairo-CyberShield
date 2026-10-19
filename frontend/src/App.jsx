@@ -7,6 +7,9 @@ import TopBar from './components/TopBar.jsx';
 import SideNav from './components/SideNav.jsx';
 import EmptyState from './components/EmptyState.jsx';
 import ToastHost from './components/ToastHost.jsx';
+import Banner from './components/Banner.jsx';
+import KillSwitchControl from './components/KillSwitchControl.jsx';
+import { formatClock } from './utils/formatTime.js';
 import Overview from './screens/Overview/Overview.jsx';
 import IncidentDrawer from './screens/Overview/IncidentDrawer.jsx';
 import Blocklist from './screens/Blocklist/Blocklist.jsx';
@@ -33,6 +36,14 @@ export default function App() {
         <TopBar console={consoleState} />
         <SideNav />
         <main id="main" className="shell__main" tabIndex={-1}>
+          {consoleState.status?.killSwitch && (
+            <Banner
+              tone="critical"
+              action={<KillSwitchControl status={consoleState.status} disabled={consoleState.connection !== 'live'} variant="banner" />}
+            >
+              Kill switch on{consoleState.status.killSwitchSince ? ` since ${formatClock(consoleState.status.killSwitchSince)}` : ''}. Kairo is detecting but not acting.
+            </Banner>
+          )}
           <Routes>
             <Route path="/" element={<Overview />}>
               <Route path="incidents/:id" element={<IncidentDrawer />} />

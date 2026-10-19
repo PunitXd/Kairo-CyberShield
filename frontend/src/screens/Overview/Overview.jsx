@@ -23,6 +23,7 @@ const enforcingRules = (status) => (status?.rules ?? []).filter((r) => r.mode ==
 export default function Overview() {
   const { connection, status } = useConsole();
   const stale = connection !== 'live';
+  const killSwitch = Boolean(status?.killSwitch);
   const now = useNow(stale);
   const { incidents, blocks, overview, loaded, error, dataAt, freshIds, removeBlocksFor } = useOverviewData(connection);
 
@@ -132,7 +133,7 @@ export default function Overview() {
                     <IncidentRow
                       key={incident._id}
                       incident={incident}
-                      action={deriveActionState(incident, blocks, now)}
+                      action={deriveActionState(incident, blocks, now, { killSwitch })}
                       now={now}
                       isNew={freshIds.has(incident._id)}
                       isLatest={i === 0}
@@ -164,6 +165,7 @@ export default function Overview() {
                   block={block}
                   now={now}
                   disabled={stale}
+                  killSwitch={killSwitch}
                   onUnblocked={(b) => removeBlocksFor(b.scope, b.subject)}
                 />
               ))}
@@ -172,7 +174,7 @@ export default function Overview() {
         </aside>
       </div>
 
-      <Outlet context={{ incidents, blocks, now, stale, removeBlocksFor }} />
+      <Outlet context={{ incidents, blocks, now, stale, killSwitch, removeBlocksFor }} />
 
       <div role="status" aria-live="polite" className="visually-hidden">
         {announcement}

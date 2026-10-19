@@ -26,6 +26,7 @@ const headline = (incident, action) => {
   const who = formatHash('ip', incident.subject);
   const why = incident.summary;
   if (VERB[action.state]) return `${VERB[action.state]} ${who} from ${SCOPE_LABEL[action.scope] ?? action.scope} after ${why}`;
+  if (action.heldBack) return `${VERB[action.heldBack]} ${who} from ${SCOPE_LABEL[action.scope] ?? action.scope}, held back by the kill switch, after ${why}`;
   if (action.state === 'shadow') return `Would have acted on ${who} after ${why}`;
   return `${who}: ${why} (${action.reason === 'manually' ? 'unblocked by the operator' : 'expired'})`;
 };
@@ -58,7 +59,7 @@ function UnblockButton({ scope, subject, disabled, onUnblocked }) {
 export default function IncidentDrawer() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { incidents, blocks, now, stale, removeBlocksFor } = useOutletContext();
+  const { incidents, blocks, now, stale, killSwitch, removeBlocksFor } = useOutletContext();
   const { detail, error, loading, reload } = useIncidentDetail(id);
 
   // Header renders instantly from the feed row; the detail fills in the rest.
@@ -77,8 +78,9 @@ export default function IncidentDrawer() {
     );
   }
 
-  const action = deriveActionState(incident, blocks, now);
-  const active = action.state === 'blocked' || action.state === 'throttled';
+  const action = deriveActionState(incident, blocks, now, { killSwitch });
+  // Still unblockable while the kill switch holds it back: the key exists.
+  const active = action.state === 'blocked' || action.state === 'throttled' || Boolean(action.heldBack);
   const ev = incident.evidence ?? {};
   const distinctNoun = incident.family === 'room' ? 'distinct codes' : 'distinct accounts';
 

@@ -47,3 +47,14 @@ test('upsertIncident replaces by id and keeps newest first', () => {
 test('blockKey separates a throttle and a block on the same source', () => {
   assert.notEqual(blockKey(throttle), blockKey(block));
 });
+
+test('kill switch on: an active block reads as Shadow · kill switch, but keeps its scope and expiry for Unblock', () => {
+  assert.deepEqual(deriveActionState(incident, [throttle, block], NOW, { killSwitch: true }), {
+    state: 'shadow',
+    reason: 'kill switch',
+    heldBack: 'blocked',
+    scope: 'auth',
+    expiresAt: NOW + 300_000,
+  });
+  assert.equal(deriveActionState(incident, [], NOW, { killSwitch: true }).state, 'resolved', 'nothing active: still resolved');
+});

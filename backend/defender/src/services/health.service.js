@@ -23,9 +23,18 @@ export const getSystemStatus = async ({ redis, mongo, env, getConsumerStats, get
   ]);
 
   let killSwitch = false;
+  let killSwitchSince = null;
   if (redisStatus === 'ok') {
     try {
-      killSwitch = Boolean(await withTimeout(redis.get(KEYS.killswitch), PROBE_TIMEOUT_MS, 'killswitch'));
+      const raw = await withTimeout(redis.get(KEYS.killswitch), PROBE_TIMEOUT_MS, 'killswitch');
+      killSwitch = Boolean(raw);
+      if (raw) {
+        try {
+          killSwitchSince = Number(JSON.parse(raw).at) || null;
+        } catch {
+          killSwitchSince = null;
+        }
+      }
     } catch {
       killSwitch = false;
     }
@@ -40,6 +49,7 @@ export const getSystemStatus = async ({ redis, mongo, env, getConsumerStats, get
     consumerLagMs: stats.lastEventTs ? now - stats.lastEventTs : null,
     hooks: Object.entries(stats.lastEventAtByInst ?? {}).map(([inst, lastEventAt]) => ({ inst, lastEventAt })),
     killSwitch,
+    killSwitchSince,
     env,
     // Rule modes from rules.json, so an empty console can say what Kairo is watching.
     rules: getRules?.() ?? [],

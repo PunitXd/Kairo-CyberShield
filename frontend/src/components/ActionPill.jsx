@@ -26,7 +26,7 @@ const ICON_PATHS = {
 const VERB = { blocked: 'Blocked', throttled: 'Throttled', resolved: 'Resolved', shadow: 'Shadow', failed: 'Failed' };
 
 export default function ActionPill({ state, scope, reason }) {
-  const detail = scope ? SCOPE_LABEL[scope] ?? scope : reason;
+  const detail = reason === 'kill switch' ? reason : scope ? SCOPE_LABEL[scope] ?? scope : reason;
   return (
     <span className={`pill pill--${state}`}>
       <svg className="pill__icon" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
