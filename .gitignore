@@ -4,3 +4,8 @@ backend/defender/public/
 frontend/dist/
 .DS_Store
 env/*.env
+.claude/
+CLAUDE.md
+Kairo Shield — PRD.md
+ARCHITECTURE.md
+PHASES.md
