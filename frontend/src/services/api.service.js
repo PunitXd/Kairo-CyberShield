@@ -93,3 +93,6 @@ export const rollbackDeployment = (id) => request('POST', `/api/deployments/${en
 
 /** Operator: clear the R4 freeze → { changed }. */
 export const unfreezeRollback = () => request('POST', '/api/rollback/unfreeze', { body: {} });
+
+/** One incident's attempts over time → { available, ruleId, threshold, windowMs, stepMs, from, to, points: [{ t, n, w }] }. */
+export const getIncidentSeries = (id) => request('GET', `/api/incidents/${encodeURIComponent(id)}/series`);

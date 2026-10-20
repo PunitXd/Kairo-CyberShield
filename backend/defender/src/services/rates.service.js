@@ -19,12 +19,22 @@
 //
 // The last 5 minutes stay in memory for GET /api/rates, so a freshly opened
 // dashboard starts with a full chart.
+//
+// Per source, the same measure is also kept in 1-second buckets for
+// SERIES_RETENTION_MS (PHASES Oct 22 #5): the incident drawer's attempts chart
+// reads it through seriesFor(). Hashes and counts only; sources idle for the
+// retention period are dropped, and at most SERIES_MAX_SUBJECTS are kept (the
+// least recently active goes first), so a flood from many IPs can't grow it.
 
 import { WindowStore } from '../utils/WindowStore.js';
 
 export const CHARTED_RULES = ['R1a', 'R2a', 'R3a'];
 export const HISTORY_SEC = 300;
 const SWEEP_MS = 30_000;
+export const SERIES_RETENTION_MS = 15 * 60_000;
+export const SERIES_MAX_SUBJECTS = 1000;
+/** Which charted rule tells an incident family's attempts story. */
+export const SERIES_RULE_BY_FAMILY = { auth: 'R1a', room: 'R2a', socket: 'R3a' };
 const MARKED_RESULTS = new Set(['applied', 'already_active', 'sent']);
 const MARKED_TYPES = new Set(['block', 'throttle', 'disconnect', 'knock_mode']); // not flag: internal bookkeeping
 const SEEN_IDS_MAX = 500;
@@ -38,6 +48,35 @@ export const createRates = ({ rules, getConfig, bus = null, now = Date.now, tick
   let lastSweep = now();
   let actions = [];
   const seenIds = new Set();
+  const series = new Map(); // `${ruleId}|${subject}` → { last, buckets: Map<secondMs, value> }
+
+  const addToSeries = (ruleId, subject, value, ts) => {
+    const key = `${ruleId}|${subject}`;
+    let entry = series.get(key);
+    if (!entry) {
+      if (series.size >= SERIES_MAX_SUBJECTS) {
+        let oldestKey = null;
+        let oldest = Infinity;
+        for (const [k, e] of series) if (e.last < oldest) [oldest, oldestKey] = [e.last, k];
+        series.delete(oldestKey);
+      }
+      entry = { last: ts, buckets: new Map() };
+      series.set(key, entry);
+    }
+    const sec = Math.floor(ts / 1000) * 1000;
+    entry.buckets.set(sec, (entry.buckets.get(sec) ?? 0) + value);
+    entry.last = Math.max(entry.last, ts);
+  };
+
+  const sweepSeries = (t) => {
+    for (const [key, entry] of series) {
+      if (entry.last < t - SERIES_RETENTION_MS) {
+        series.delete(key);
+        continue;
+      }
+      for (const sec of entry.buckets.keys()) if (sec < t - SERIES_RETENTION_MS) entry.buckets.delete(sec);
+    }
+  };
 
   /** Remember one action for the current second's marker (bus: action.applied). */
   const recordAction = (a) => {
@@ -63,7 +102,9 @@ export const createRates = ({ rules, getConfig, bus = null, now = Date.now, tick
       const subject = rule.subject(event);
       if (!subject) continue;
       try {
-        windows.add(rule.id, rule.windowKey?.(event) ?? subject, rule.measure(event, cfg), event.ts, cfg.windowMs);
+        const measured = rule.measure(event, cfg);
+        windows.add(rule.id, rule.windowKey?.(event) ?? subject, measured, event.ts, cfg.windowMs);
+        addToSeries(rule.id, subject, measured.value, event.ts);
       } catch {
         /* a chart must never break event processing */
       }
@@ -94,6 +135,7 @@ export const createRates = ({ rules, getConfig, bus = null, now = Date.now, tick
     while (history.length && history[0].t < sample.t - HISTORY_SEC * 1000) history.shift();
     if (t - lastSweep >= SWEEP_MS) {
       windows.sweep(t);
+      sweepSeries(t);
       lastSweep = t;
     }
     bus?.emit('rates.tick', sample);
@@ -107,6 +149,24 @@ export const createRates = ({ rules, getConfig, bus = null, now = Date.now, tick
     record,
     recordAction,
     tick,
+    /**
+     * One source's attempts for one charted rule, every stepMs from `from` to
+     * `to`: n = the measure inside that step, w = inside the rule's window
+     * ending there (what the rule compares with its threshold).
+     * @returns {{ available: boolean, points: Array<{ t, n, w }>, oldestMs: number|null }}
+     */
+    seriesFor: (ruleId, subject, { from, to, stepMs, windowMs }) => {
+      const entry = series.get(`${ruleId}|${subject}`);
+      if (!entry || !entry.buckets.size) return { available: false, points: [], oldestMs: null };
+      const buckets = [...entry.buckets].sort((a, b) => a[0] - b[0]);
+      const sum = (lo, hi) => buckets.reduce((acc, [sec, v]) => (sec > lo && sec <= hi ? acc + v : acc), 0);
+      const points = [];
+      const start = Math.ceil(from / stepMs) * stepMs;
+      for (let t = start; t <= to; t += stepMs) {
+        points.push({ t, n: Math.round(sum(t - stepMs, t) * 100) / 100, w: Math.round(sum(t - windowMs, t) * 100) / 100 });
+      }
+      return { available: points.some((p) => p.n > 0 || p.w > 0), points, oldestMs: buckets[0][0] };
+    },
     /** Samples from the last windowSec seconds, oldest first. */
     history: (windowSec = HISTORY_SEC) => history.filter((s) => s.t >= now() - windowSec * 1000),
     stop: () => {

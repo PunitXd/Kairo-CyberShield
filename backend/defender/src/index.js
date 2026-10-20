@@ -147,6 +147,7 @@ const boot = async () => {
     getConfig: configStore.get,
     getPipelineSync: pipelinePoller ? pipelinePoller.getSync : null,
     getRates: rates.history,
+    getSeries: rates.seriesFor,
   };
   const httpServer = createServer(createApp(deps));
   const realtime = createRealtime({ httpServer, bus, log, getStatus: () => getSystemStatus(deps) });

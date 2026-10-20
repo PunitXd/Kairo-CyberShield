@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   PANELS,
   countNew,
+  incidentMarkers,
   describeEvent,
   markerLabel,
   niceMax,
@@ -107,4 +108,17 @@ test('the paused stream counts only events newer than what is on screen', () => 
   assert.equal(countNew(shown, [mk(5), mk(4), mk(3), mk(2)]), 2);
   assert.equal(countNew(shown, shown), 0);
   assert.equal(countNew([], [mk(1)]), 1);
+});
+
+test('drawer markers: what Kairo did and when, shadow marked, flags and failures left out', () => {
+  const at = (s) => new Date(T + s * 1000).toISOString();
+  const markers = incidentMarkers([
+    { ruleId: 'R1b', type: 'block', result: 'applied', requestedAt: at(9), appliedAt: at(10) },
+    { ruleId: 'R1a', type: 'throttle', result: 'applied', requestedAt: at(1), appliedAt: at(2) },
+    { ruleId: 'R2a', type: 'flag', result: 'applied', requestedAt: at(3), appliedAt: at(3) },
+    { ruleId: 'R1b', type: 'block', result: 'skipped_shadow', requestedAt: at(20) },
+    { ruleId: 'R1b', type: 'block', result: 'failed', requestedAt: at(30) },
+  ]);
+  assert.deepEqual(markers.map((m) => m.label), ['R1a · Throttled', 'R1b · Blocked', 'R1b · Blocked (shadow)']);
+  assert.equal(markers[0].t, T + 2000, 'applied time, not requested');
 });

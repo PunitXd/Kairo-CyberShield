@@ -1783,3 +1783,36 @@ details[open] > .job__summary::after {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---- Incident drawer: attempts over time (PHASES Oct 22 #5) ---- */
+
+.attempts {
+  margin: 0;
+}
+.attempts__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.attempts__bar {
+  fill: var(--text-3);
+  opacity: 0.35;
+}
+.attempts__now {
+  stroke: var(--border-strong);
+  stroke-dasharray: 2 3;
+}
+.attempts__base {
+  stroke: var(--border);
+}
+.attempts__limit,
+.attempts__axis {
+  fill: var(--text-3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.attempts__caption {
+  margin-top: var(--space-1);
+  font-size: var(--type-label);
+  color: var(--text-3);
+}

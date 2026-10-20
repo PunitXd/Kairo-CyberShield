@@ -20,6 +20,8 @@ import Timeline from '../../components/Timeline.jsx';
 import FieldChips from '../../components/FieldChips.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 import FalsePositiveControl from '../../components/FalsePositiveControl.jsx';
+import AttemptsChart from '../../components/AttemptsChart.jsx';
+import { useIncidentSeries } from '../../hooks/useIncidentSeries.js';
 import { useAllowlist } from '../../hooks/useAllowlist.js';
 import { useConsole } from '../../hooks/useConsole.js';
 import { useIncidentDetail } from '../../hooks/useIncidentDetail.js';
@@ -83,6 +85,8 @@ export default function IncidentDrawer({ id: idProp, context, onClose } = {}) {
   const { detail, error, loading, reload } = useIncidentDetail(id);
   const { connection } = useConsole();
   const allowlist = useAllowlist(connection);
+  const feedIncident = detail?.incident ?? incidents.find((i) => i._id === id);
+  const { series, error: seriesError } = useIncidentSeries(feedIncident?.family === 'deploy' ? null : id, feedIncident?.lastSeenAt);
 
   // Header renders instantly from the feed row; the detail fills in the rest.
   const incident = detail?.incident ?? incidents.find((i) => i._id === id);
@@ -159,6 +163,27 @@ export default function IncidentDrawer({ id: idProp, context, onClose } = {}) {
           {Number.isFinite(ev.softFirings) && ev.softFirings > 0 ? ` · soft step fired ${ev.softFirings}×` : ''}
         </p>
       </section>
+
+      {incident.family !== 'deploy' && (
+        <section className="drawer__section" aria-labelledby="attempts-title">
+          <h3 id="attempts-title" className="drawer__section-title">
+            Attempts over time
+          </h3>
+          {series?.available ? (
+            <AttemptsChart series={series} actions={detail?.actions ?? []} />
+          ) : series ? (
+            <p className="empty-state__hint">
+              {series.reason === 'no_series'
+                ? 'No attempt history for this kind of incident.'
+                : `Attempt history is kept for ${Math.round((series.retentionMs ?? 900_000) / 60_000)} min after the last event (and restarts with the Defender). The evidence below still holds.`}
+            </p>
+          ) : seriesError ? (
+            <p className="empty-state__hint">Could not load the attempt history: {seriesError.message}</p>
+          ) : (
+            <div className="skeleton skeleton--block" aria-label="Loading attempt history" />
+          )}
+        </section>
+      )}
 
       <section className="drawer__section" aria-labelledby="fields-title">
         <h3 id="fields-title" className="drawer__section-title">

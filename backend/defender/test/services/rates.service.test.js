@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 
-import { createRates, HISTORY_SEC } from '../../src/services/rates.service.js';
+import { createRates, HISTORY_SEC, SERIES_MAX_SUBJECTS } from '../../src/services/rates.service.js';
 import { rules } from '../../src/rules/index.js';
 import { CONFIG, IP_A, IP_B, T0, authFail, roomMiss, socketRate } from '../helpers.js';
 
@@ -86,4 +86,34 @@ test('enforced actions become markers on the second they landed in, each action 
   assert.equal(bus.listenerCount('action.applied'), 0);
   assert.equal(ticks.length, 0);
   rates.stop();
+});
+
+test('per-source series: rolling window count per step, only for that source', () => {
+  const { rates } = setup();
+  for (let i = 0; i < 6; i++) rates.record(authFail({ ts: T0 + i * 1000, ip: IP_A }));
+  rates.record(authFail({ ts: T0, ip: IP_B }));
+  const s = rates.seriesFor('R1a', IP_A, { from: T0 - 10_000, to: T0 + 70_000, stepMs: 5000, windowMs: 60_000 });
+  assert.equal(s.available, true);
+  const at = (t) => s.points.find((p) => p.t === t);
+  assert.equal(at(T0 + 5000).w, 6, 'all six inside the 60 s window (buckets are whole seconds)');
+  assert.equal(at(T0 + 5000).n, 5, 'step (T0, T0+5 s]: seconds 1–5');
+  assert.equal(at(T0 + 65_000).w, 0, 'the window has emptied');
+  assert.equal(rates.seriesFor('R1a', 'ffffffffffffffff', { from: T0, to: T0 + 1000, stepMs: 1000, windowMs: 60_000 }).available, false);
+});
+
+test('per-source series are swept after 15 min', () => {
+  const { clock, rates } = setup();
+  rates.record(authFail({ ts: T0, ip: IP_A }));
+  clock.now = T0 + 16 * 60_000;
+  rates.tick();
+  assert.equal(rates.seriesFor('R1a', IP_A, { from: T0 - 1000, to: T0 + 1000, stepMs: 1000, windowMs: 60_000 }).available, false);
+});
+
+test('per-source series are capped: the least recently active source goes first', () => {
+  const { rates } = setup();
+  const ip = (i) => i.toString(16).padStart(16, '0');
+  for (let i = 0; i <= SERIES_MAX_SUBJECTS; i++) rates.record(authFail({ ts: T0 + i, ip: ip(i) }));
+  const q = { from: T0 - 1000, to: T0 + 5000, stepMs: 1000, windowMs: 60_000 };
+  assert.equal(rates.seriesFor('R1a', ip(0), q).available, false, 'oldest evicted');
+  assert.equal(rates.seriesFor('R1a', ip(SERIES_MAX_SUBJECTS), q).available, true);
 });

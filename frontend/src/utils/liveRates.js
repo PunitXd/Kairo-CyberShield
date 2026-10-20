@@ -163,3 +163,16 @@ export const countNew = (shown, latest) => {
   const newestShown = shown[0].ts;
   return latest.filter((r) => !keys.has(r.key) && r.ts >= newestShown).length;
 };
+
+const MARKED_RESULTS = new Set(['applied', 'already_active', 'sent', 'skipped_shadow']);
+
+/** An incident's own actions as chart markers (drawer chart): what Kairo did, and when. */
+export const incidentMarkers = (actions = []) =>
+  actions
+    .filter((a) => MARKED_RESULTS.has(a.result) && a.type !== 'flag')
+    .map((a) => ({
+      t: Date.parse(a.appliedAt ?? a.requestedAt),
+      label: `${markerLabel(a)}${a.result === 'skipped_shadow' ? ' (shadow)' : ''}`,
+    }))
+    .filter((m) => Number.isFinite(m.t))
+    .sort((a, b) => a.t - b.t);
