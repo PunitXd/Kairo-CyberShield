@@ -21,6 +21,8 @@ const connectDB = async (uri) => {
   const pipelineRuns = db.collection('pipeline_runs');
   // Every rules config version (ARCH §8.2): kept forever, never reset.
   const configVersions = db.collection('config_versions');
+  // Operator allowlist (ARCH §8.2): reason and expiry; kairo:allow:* in Redis is what enforces.
+  const allowlist = db.collection('allowlist');
 
   await Promise.all([
     incidents.createIndex({ status: 1, detectedAt: -1 }),
@@ -35,9 +37,11 @@ const connectDB = async (uri) => {
     pipelineRuns.createIndex({ startedAt: -1 }),
     pipelineRuns.createIndex({ syncedAt: 1 }, { expireAfterSeconds: DAYS_90 }),
     configVersions.createIndex({ version: -1 }),
+    allowlist.createIndex({ subject: 1 }, { unique: true }),
+    allowlist.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
   ]);
 
-  return { client, db, incidents, actions, auditLog, pipelineRuns, configVersions };
+  return { client, db, incidents, actions, auditLog, pipelineRuns, configVersions, allowlist };
 };
 
 export default connectDB;

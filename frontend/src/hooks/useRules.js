@@ -39,7 +39,7 @@ export const useRules = (connection, killSwitch) => {
         load();
       }, REFRESH_MS);
     };
-    const offs = ['config.updated', 'incident.created', 'block.added', 'block.removed'].map((name) => onConsoleEvent(name, soon));
+    const offs = ['config.updated', 'incident.created', 'incident.updated', 'block.added', 'block.removed', 'allowlist.changed'].map((name) => onConsoleEvent(name, soon));
     return () => {
       offs.forEach((off) => off());
       clearTimeout(timer.current);

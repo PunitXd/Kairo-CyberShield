@@ -1,8 +1,9 @@
 // S2 Incident detail (BRIEF §6): headline sentence → action bar → timeline →
 // evidence → Fields received. Opened at /incidents/:id over the Overview,
 // which stays mounted and live underneath. Unblock is the primary action
-// while a block or throttle is active. Extend and Mark false positive are cut
-// from the Demo MVP (PHASES §1). Esc returns focus to the row that opened it.
+// while a block or throttle is active; Mark false positive (optionally with a
+// 24 h allowlist) sits next to it (PHASES Oct 21 #4). Extend is cut. Esc
+// returns focus to the row that opened it.
 
 import { useCallback } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router';
@@ -14,11 +15,15 @@ import Countdown from '../../components/Countdown.jsx';
 import Timeline from '../../components/Timeline.jsx';
 import FieldChips from '../../components/FieldChips.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
+import FalsePositiveControl from '../../components/FalsePositiveControl.jsx';
+import { useAllowlist } from '../../hooks/useAllowlist.js';
+import { useConsole } from '../../hooks/useConsole.js';
 import { useIncidentDetail } from '../../hooks/useIncidentDetail.js';
 import { useUnblock } from '../../hooks/useUnblock.js';
 import { deriveActionState, SCOPE_LABEL } from '../../utils/incidentState.js';
 import { formatHash } from '../../utils/formatHash.js';
 import { describeWindow } from '../../utils/formatDuration.js';
+import { formatClock } from '../../utils/formatTime.js';
 
 const VERB = { blocked: 'Blocked', throttled: 'Throttled' };
 
@@ -69,6 +74,8 @@ export default function IncidentDrawer() {
   const navigate = useNavigate();
   const { incidents, blocks, now, blockedReason, killSwitch, removeBlocksFor } = useOutletContext();
   const { detail, error, loading, reload } = useIncidentDetail(id);
+  const { connection } = useConsole();
+  const allowlist = useAllowlist(connection);
 
   // Header renders instantly from the feed row; the detail fills in the rest.
   const incident = detail?.incident ?? incidents.find((i) => i._id === id);
@@ -87,6 +94,7 @@ export default function IncidentDrawer() {
   }
 
   const action = deriveActionState(incident, blocks, now, { killSwitch });
+  const allowlisted = allowlist.items.find((e) => e.subject === incident.subject && e.expiresAt > now) ?? null;
   // Still unblockable while the kill switch holds it back: the key exists.
   // Unblock needs a Redis key; a socket slow-down or disconnect has none.
   const active = ((action.state === 'blocked' || action.state === 'throttled') && !action.keyless) || Boolean(action.heldBack);
@@ -103,13 +111,16 @@ export default function IncidentDrawer() {
         </span>
         <ActionPill state={action.state} scope={action.scope} reason={action.reason} />
         <Countdown expiresAt={action.expiresAt} now={now} />
+        {incident.falsePositive && <span className="tag tag--fp">False positive</span>}
+        {allowlisted && <span className="tag tag--allow">Allowlisted until {formatClock(allowlisted.expiresAt)}</span>}
       </div>
 
-      {active && (
-        <div className="drawer__actions">
+      <div className="drawer__actions">
+        {active && (
           <UnblockButton scope={action.scope} subject={incident.subject} blockedReason={blockedReason} onUnblocked={(b) => removeBlocksFor(b.scope, b.subject)} />
-        </div>
-      )}
+        )}
+        <FalsePositiveControl incident={incident} allowlisted={allowlisted} blockedReason={blockedReason} onDone={reload} />
+      </div>
 
       <section className="drawer__section" aria-labelledby="timeline-title">
         <h3 id="timeline-title" className="drawer__section-title">

@@ -1527,3 +1527,71 @@ details[open] > .job__summary::after {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ---- False positive + allowlist (PHASES Oct 21 #4) ---- */
+
+.input {
+  padding: var(--space-1) var(--space-2);
+  min-height: 32px;
+  background: var(--bg);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text-1);
+  font: inherit;
+}
+.tag {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  font-size: var(--type-label);
+  color: var(--text-2);
+}
+.tag--fp {
+  border-color: var(--sev-medium);
+  color: var(--sev-medium);
+}
+.tag--allow {
+  border-color: var(--act-resolved);
+  color: var(--act-resolved);
+}
+.fp__allow {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  margin-top: var(--space-2);
+  color: var(--text-1);
+}
+.allowlist {
+  margin-top: var(--space-6);
+}
+.allowlist__summary {
+  cursor: pointer;
+  font-size: var(--type-heading);
+  font-weight: 600;
+}
+.allowlist[open] .allowlist__summary {
+  margin-bottom: var(--space-3);
+}
+.allowlist__muted {
+  color: var(--text-3);
+}
+.allowlist__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+.allowlist__form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--type-label);
+  color: var(--text-2);
+}
+/* In the drawer the buttons sit at its left edge: open the popover rightwards. */
+.drawer__actions .popover {
+  left: 0;
+  right: auto;
+}

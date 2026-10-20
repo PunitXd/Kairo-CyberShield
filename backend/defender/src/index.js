@@ -21,6 +21,7 @@ import { createUnblockService } from './services/unblock.service.js';
 import { createKillSwitchService } from './services/killswitch.service.js';
 import { createKnockService } from './services/knock.service.js';
 import { createRuleService } from './services/rule.service.js';
+import { createAllowlistService } from './services/allowlist.service.js';
 import { createGithubPoller } from './pollers/github.poller.js';
 import { createAckService } from './services/ack.service.js';
 import { createRates } from './services/rates.service.js';
@@ -104,6 +105,7 @@ const boot = async () => {
   const unblock = createUnblockService({ redis, mongo, bus, log, hasher });
   const killSwitch = createKillSwitchService({ redis, mongo, bus, log, hasher });
   const knock = createKnockService({ redis, mongo, log, hasher });
+  const allowlist = createAllowlistService({ redis, mongo, bus, log, hasher });
   const ruleService = createRuleService({ configStore, rules, mongo, redis, bus, log, hasher });
   await ruleService.init(); // continue the config_versions history
   process.on('SIGHUP', () => ruleService.reloadFromFile());
@@ -123,6 +125,9 @@ const boot = async () => {
     killSwitch,
     knock,
     ruleService,
+    allowlist,
+    hasher,
+    bus,
     getConfig: configStore.get,
     getPipelineSync: pipelinePoller ? pipelinePoller.getSync : null,
     getRates: rates.history,

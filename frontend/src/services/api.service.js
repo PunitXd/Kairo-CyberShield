@@ -71,3 +71,16 @@ export const getRules = () => request('GET', '/api/rules');
 
 /** Change one rule's mode (thresholds are read-only) → { configVersion, rule, changed }. */
 export const setRuleMode = (id, mode) => request('PATCH', `/api/rules/${encodeURIComponent(id)}`, { body: { mode } });
+
+/** Mark an incident a false positive, optionally allowlisting its source → { incident, allowlisted }. */
+export const markFalsePositive = (id, { note, allowlistHours } = {}) =>
+  request('POST', `/api/incidents/${encodeURIComponent(id)}/false-positive`, { body: { ...(note ? { note } : {}), ...(allowlistHours ? { allowlistHours } : {}) } });
+
+/** Live allowlist entries, soonest expiry first → { items }. */
+export const getAllowlist = () => request('GET', '/api/allowlist');
+
+/** Allowlist a typed IP (hashed by the Defender, never stored) or a source hash → { entry }. */
+export const addAllowlist = (body) => request('POST', '/api/allowlist', { body });
+
+/** Take a source off the allowlist → { removed }. */
+export const removeAllowlist = (subject) => request('DELETE', `/api/allowlist/${encodeURIComponent(subject)}`);

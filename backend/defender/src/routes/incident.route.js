@@ -2,11 +2,12 @@
 
 import { Router } from 'express';
 
-import { getIncident, listIncidents } from '../controllers/incident.controller.js';
+import { getIncident, listIncidents, markFalsePositive } from '../controllers/incident.controller.js';
 
 const router = Router();
 
 router.get('/', listIncidents);
 router.get('/:id', getIncident);
+router.post('/:id/false-positive', markFalsePositive);
 
 export default router;

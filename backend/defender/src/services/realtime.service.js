@@ -7,6 +7,7 @@
 //   pipeline.run / pipeline.sync        GitHub poller (a run changed / GitHub reachable or not)
 //   rates.tick                          every second: counts per event type and per-rule peaks
 //   config.updated                      { configVersion } after a rule mode change or reload
+//   allowlist.changed                   { subject, on } after an allowlist add or remove
 // The handshake gets the same localhost + same-origin check as the REST API.
 
 import { Server } from 'socket.io';
@@ -25,6 +26,7 @@ export const FORWARDED_EVENTS = [
   'pipeline.sync',
   'rates.tick',
   'config.updated',
+  'allowlist.changed',
 ];
 const STATUS_POLL_MS = 2000;
 

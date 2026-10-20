@@ -1,12 +1,14 @@
 // S4 Blocklist (BRIEF §6): summary line → scope filter → one row per active
 // block or throttle, soonest expiry first, each with its reason, a live
-// countdown and Unblock (with Undo). Bulk unblock, the allowlist panel and
-// manual blocks are cut from the Demo MVP (PHASES §1).
+// countdown and Unblock (with Undo). Below it, the collapsed Allowlist panel
+// (PHASES Oct 21 #4). Bulk unblock and manual blocks are cut.
 
 import { useState } from 'react';
 
+import AllowlistPanel from '../../components/AllowlistPanel.jsx';
 import BlockRow from '../../components/BlockRow.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
+import { useAllowlist } from '../../hooks/useAllowlist.js';
 import { useBlocks } from '../../hooks/useBlocks.js';
 import { useConsole } from '../../hooks/useConsole.js';
 import { useNow } from '../../hooks/useNow.js';
@@ -30,6 +32,7 @@ export default function Blocklist() {
   const now = useNow(stale);
   const { blocks, incidents, cap, loaded, error, lastExpiryAt, removeBlocksFor } = useBlocks(connection, status?.redis);
   const [scope, setScope] = useState(null);
+  const allowlist = useAllowlist(connection);
 
   const active = blocks.filter((b) => b.expiresAt > now);
   const shown = active.filter((b) => !scope || b.scope === scope).sort((a, b) => a.expiresAt - b.expiresAt);
@@ -107,6 +110,8 @@ export default function Blocklist() {
           </div>
         )}
       </div>
+
+      <AllowlistPanel allowlist={allowlist} now={now} blockedReason={blockedReason} redisDown={redisDown} />
     </section>
   );
 }

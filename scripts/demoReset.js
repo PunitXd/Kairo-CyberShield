@@ -8,7 +8,7 @@
 //               kill switch) and cypherfy:authbackoff:* (CypherFy's own login
 //               backoff, which would otherwise hide Kairo on the next run).
 //               Targeted, never FLUSHALL: CypherFy's socket state stays.
-//        Mongo  empty incidents, actions and audit_log in the kairo db.
+//        Mongo  empty incidents, actions, audit_log and allowlist in the kairo db.
 //               pipeline_runs is kept, so the Pipeline screen works offline.
 //        Seed   rerun seedCypherfy.js (demo passwords, room expiry)
 //   3. start the Defender, wait until it is healthy, and check the result
@@ -27,7 +27,7 @@ import Redis from 'ioredis';
 export const REDIS_URL = 'redis://127.0.0.1:6379'; // docker-compose.yml publishes Redis here only
 export const DEFENDER_URL = 'http://127.0.0.1:7070';
 export const RESET_PATTERNS = ['kairo:*', 'cypherfy:authbackoff:*'];
-export const CLEARED_COLLECTIONS = ['incidents', 'actions', 'audit_log']; // never pipeline_runs
+export const CLEARED_COLLECTIONS = ['incidents', 'actions', 'audit_log', 'allowlist']; // never pipeline_runs or config_versions
 const TARGET_MS = 15_000;
 const n = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
