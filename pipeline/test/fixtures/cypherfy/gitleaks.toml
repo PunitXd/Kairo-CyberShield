@@ -1,0 +1,17 @@
+# Gitleaks config for CypherFy (Kairo Shield pipeline, Kairo ARCH §10.2).
+# Uses Gitleaks' default rules. Every allowlist entry needs a "# reason:" line;
+# keep the list short, since each entry is a place a real leak would be missed.
+
+title = "CypherFy secret scan (Kairo Shield)"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Committed example env files with placeholder values only"
+paths = [
+  # reason: template for backend/.env; placeholders like "your-access-token-secret-min-32-chars", no real values
+  '''^backend/\.env\.example$''',
+  # reason: template for the Flutter release defines; example URLs and an empty client id, no real values
+  '''^frontend/dart_defines\.example\.json$''',
+]

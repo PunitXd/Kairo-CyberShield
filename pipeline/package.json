@@ -1,0 +1,13 @@
+{
+  "name": "kairo-init",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Generates the Kairo Shield CI pipeline (GitHub Actions + Gitleaks + npm audit) for a repository (ARCH §10.3).",
+  "type": "module",
+  "bin": {
+    "kairo-init": "bin/kairoInit.js"
+  },
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\""
+  }
+}

@@ -1,0 +1,17 @@
+@@GENERATED@@
+# Gitleaks config for @@PROJECT_NAME@@ (Kairo Shield pipeline, Kairo ARCH §10.2).
+# Uses Gitleaks' default rules. Every allowlist entry needs a "# reason:" line;
+# keep the list short, since each entry is a place a real leak would be missed.
+
+title = "@@PROJECT_NAME@@ secret scan (Kairo Shield)"
+
+[extend]
+useDefault = true
+@@BEGIN allowlist@@
+
+[[allowlists]]
+description = "@@ALLOWLIST_DESCRIPTION@@"
+paths = [
+@@ALLOWLIST_PATHS@@
+]
+@@END allowlist@@

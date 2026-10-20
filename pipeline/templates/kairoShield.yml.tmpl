@@ -1,0 +1,105 @@
+@@GENERATED@@
+# Kairo Shield security pipeline (Kairo ARCH §10.1, PRD F5).
+#
+# Fails any push or PR that leaks a secret or adds a high/critical production
+# dependency advisory; the build runs only when both checks pass. Reports are
+# uploaded as artifacts (Gitleaks output is redacted). The workflow needs no
+# repository secrets: it only reads code. A scanner error fails the job
+# (fail closed). Third-party actions are pinned to commit SHAs, and the
+# Gitleaks binary is verified against its published SHA-256. Runners are pinned
+# to @@RUNNER@@ so a moving ubuntu-latest image cannot change a run.
+
+name: kairo-shield
+
+on:
+  push:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kairo-shield-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secrets:
+    runs-on: @@RUNNER@@
+    steps:
+      - uses: @@CHECKOUT@@
+        with:
+          fetch-depth: 0 # full history: a secret deleted later is still leaked
+
+      - name: Gitleaks
+        env:
+          GITLEAKS_VERSION: @@GITLEAKS_VERSION@@
+          GITLEAKS_SHA256: @@GITLEAKS_SHA256@@
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          curl -sSfL -o gl.tgz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gl.tgz" | sha256sum -c -
+          tar xzf gl.tgz gitleaks
+          mkdir -p kairo
+          # Always scope the scan: with no --log-opts Gitleaks scans every ref
+          # (git log --all), and fetch-depth 0 fetches every remote branch, so a
+          # leak on one branch would fail pushes to all the others.
+          LOG_OPTS="${HEAD_SHA}" # push: full history reachable from this commit
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            LOG_OPTS="${BASE_SHA}..${HEAD_SHA}" # PR: only the commits this PR adds
+          fi
+          # --redact=80 keeps only the first 20% of a match (e.g. "AKIA..."): enough
+          # to tell the key type and find it, never enough to use it.
+          ./gitleaks git --redact=80 --config .gitleaks.toml --log-opts="${LOG_OPTS}" \
+            --report-format json --report-path kairo/secrets.json
+
+      - uses: @@UPLOAD_ARTIFACT@@
+        if: always()
+        with:
+          name: kairo-secrets
+          path: kairo/secrets.json
+          retention-days: 7
+@@BEGIN npm@@
+
+  deps:
+    runs-on: @@RUNNER@@
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [@@NPM_PROJECTS@@]
+    steps:
+      - uses: @@CHECKOUT@@
+      - uses: @@SETUP_NODE@@
+        with:
+          node-version: @@NODE_VERSION@@
+
+      - name: npm audit (production, high and critical)
+        working-directory: ${{ matrix.project }}
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: |
+          mkdir -p ../kairo
+          EXIT=0
+          npm audit --omit=dev --audit-level=high --json > "../kairo/deps-${PROJECT}.json" || EXIT=$?
+          exit $EXIT
+
+      - uses: @@UPLOAD_ARTIFACT@@
+        if: always()
+        with:
+          name: kairo-deps-${{ matrix.project }}
+          path: kairo/
+          retention-days: 7
+
+  build:
+    needs: [secrets, deps]
+    runs-on: @@RUNNER@@
+    steps:
+      - uses: @@CHECKOUT@@
+      - uses: @@SETUP_NODE@@
+        with:
+          node-version: @@NODE_VERSION@@
+@@BUILD_STEPS@@
+@@END npm@@
