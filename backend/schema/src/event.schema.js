@@ -72,6 +72,7 @@ const ack = z.strictObject({ actionId: zUlid, ok: z.boolean() });
 export const securityEventSchema = z.discriminatedUnion('type', [
   z.strictObject({ ...base, type: z.literal('auth.fail'), auth }),
   z.strictObject({ ...base, type: z.literal('auth.success'), auth }),
+  z.strictObject({ ...base, type: z.literal('auth.app_throttled'), auth }),
   z.strictObject({ ...eitherBase, type: z.literal('room.join.invalid'), room }),
   z.strictObject({ ...eitherBase, type: z.literal('room.join.success'), room }),
   z.strictObject({ ...eitherBase, type: z.literal('room.join.denied'), room }),

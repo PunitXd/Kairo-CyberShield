@@ -28,6 +28,8 @@ export const rulesConfigSchema = z.strictObject({
       softFiringsThreshold: zPosInt,
       softFiringsWindowMs: zPosInt,
     }),
+    // R1c only records: there is nothing for it to enforce.
+    R1c: z.strictObject({ mode: z.enum(['shadow', 'off']), windowMs: zPosInt }),
     R2a: z.strictObject({ mode: zMode, threshold: zPosInt, windowMs: zPosInt }),
     R3a: z.strictObject({
       mode: zMode,

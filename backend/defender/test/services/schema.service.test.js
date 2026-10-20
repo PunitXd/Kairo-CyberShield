@@ -21,7 +21,7 @@ test('carriedBy and required follow the schema', () => {
   const byField = Object.fromEntries(describeEventSchema().map((f) => [f.field, f]));
   assert.deepEqual(byField['src.ipHash'].carriedBy, ['all']);
   assert.equal(byField['src.ipHash'].required, true);
-  assert.deepEqual(byField['auth.accountHash'].carriedBy, ['auth.fail', 'auth.success']);
+  assert.deepEqual(byField['auth.accountHash'].carriedBy, ['auth.app_throttled', 'auth.fail', 'auth.success']);
   assert.equal(byField['auth.accountHash'].required, false);
   assert.deepEqual(byField['room.codeHash'].carriedBy, ['room.join.denied', 'room.join.invalid', 'room.join.success']);
   assert.equal(byField['http.scope'].type, '"auth" | "room_join" | "socket"');

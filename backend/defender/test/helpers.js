@@ -166,3 +166,13 @@ export const fakeRedis = (clock) => {
 };
 
 export const silentLog = { info() {}, warn() {}, error() {}, fatal() {} };
+
+/** CypherFy's own limiter answered 429 on an auth route. */
+export const appThrottled = ({ ts, ip = IP_A, account = 'a91f0c3e7b2d10f8' } = {}) => ({
+  ts,
+  type: 'auth.app_throttled',
+  env: 'staging',
+  inst: 'test-1',
+  src: { ipHash: ip, client: 'unknown', authed: false },
+  auth: { route: 'login', status: 429, accountHash: account },
+});

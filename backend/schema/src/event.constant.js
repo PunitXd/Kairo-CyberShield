@@ -6,6 +6,7 @@ export const SCHEMA_VERSION = '1';
 export const EVENT_TYPES = [
   'auth.fail',
   'auth.success',
+  'auth.app_throttled',
   'room.join.invalid',
   'room.join.success',
   'room.join.denied',
@@ -33,7 +34,8 @@ export const AUTH_ROUTES = [
 
 export const ROOM_ERRORS = ['ROOM_NOT_FOUND', 'INVALID_CODE', 'ROOM_FULL', 'WRONG_PASSPHRASE'];
 
-export const RULE_FAMILIES = ['auth', 'room', 'socket'];
+// `app` holds R1c: CypherFy's own limiter firing, recorded but never acted on.
+export const RULE_FAMILIES = ['auth', 'room', 'socket', 'app'];
 
 // socket.rate carries per-event packet counts. Event names come from the client,
 // so they are bounded: identifier-like, at most 32 chars, at most this many per bucket.

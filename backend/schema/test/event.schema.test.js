@@ -21,6 +21,7 @@ const onSocket = { ...common, src: sockSrc };
 const valid = {
   'auth.fail': { ...common, type: 'auth.fail', auth: { route: 'login', status: 401, accountHash: 'a91f0c3e7b2d10f8' } },
   'auth.success': { ...common, type: 'auth.success', auth: { route: 'login', status: 200 } },
+  'auth.app_throttled': { ...common, type: 'auth.app_throttled', auth: { route: 'login', status: 429, accountHash: 'a91f0c3e7b2d10f8' } },
   'room.join.invalid': { ...common, type: 'room.join.invalid', room: { codeHash: H, kind: 'ephemeral', via: 'http' } },
   'room.join.success': { ...onSocket, type: 'room.join.success', room: { codeHash: H, kind: 'ephemeral', via: 'socket' } },
   'room.join.denied': { ...onSocket, type: 'room.join.denied', room: { codeHash: H, kind: 'ephemeral', via: 'socket' } },

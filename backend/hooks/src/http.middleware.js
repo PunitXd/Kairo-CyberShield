@@ -8,7 +8,9 @@
 // 2. Guard (ARCH §4.2): one MGET for allow / block / throttle / killswitch.
 //    Block → 403, throttle → token gate or 429, both with X-Kairo-Rule and an
 //    http.denied event. Any Redis error or timeout → next() (fail open).
-// 3. Observe: on res 'finish', emit auth.fail / auth.success / room.join.invalid.
+// 3. Observe: on res 'finish', emit auth.fail / auth.success /
+//    auth.app_throttled / room.join.invalid. Kairo's own 403/429 are answered in
+//    deny() before this observer is attached, so a 429 seen here is CypherFy's.
 //
 // Every entry point is wrapped so an exception in Kairo can never break a
 // CypherFy request: it logs and calls next().
@@ -125,8 +127,15 @@ export const createHttpMiddleware = ({ redis, emitter, hasher, env, inst, timeou
         const status = res.statusCode;
         if (kind.scope === 'auth') {
           if (!kind.route) return;
-          const type = status >= 200 && status < 300 ? 'auth.success' : [400, 401, 403].includes(status) ? 'auth.fail' : null;
-          if (!type) return; // 429 from CypherFy's own limiter, 5xx: not an auth signal here
+          const type =
+            status >= 200 && status < 300
+              ? 'auth.success'
+              : [400, 401, 403].includes(status)
+                ? 'auth.fail'
+                : status === 429
+                  ? 'auth.app_throttled' // CypherFy's own authRateLimiter (R1c records it)
+                  : null;
+          if (!type) return; // 5xx: not an auth signal
           const auth = { route: kind.route, status };
           if (accountHash) auth.accountHash = accountHash;
           emitter.emit({ ...baseEvent(type, srcOf(req, ipHash)), auth });

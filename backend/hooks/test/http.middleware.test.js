@@ -81,7 +81,7 @@ test('success, other statuses and found rooms map correctly', async () => {
     [fakeReq(), 200, 'auth.success'],
     [fakeReq(), 400, 'auth.fail'],
     [fakeReq(), 403, 'auth.fail'],
-    [fakeReq(), 429, null], // CypherFy's own limiter: not counted here
+    [fakeReq(), 429, 'auth.app_throttled'], // CypherFy's own limiter (R1c)
     [fakeReq(), 500, null],
     [fakeReq({ path: '/api/v1/auth/resend-verification' }), 401, null], // guarded, but no event route
     [fakeReq({ method: 'GET', path: '/api/v1/rooms/XK9PLM' }), 200, null],
@@ -208,4 +208,15 @@ test('an exception inside the hook still calls next() exactly once', async () =>
   });
   assert.equal(await run(mw, fakeReq(), fakeRes()), 1);
   assert.deepEqual(logs, ['kairo.hook_error']);
+});
+
+test("Kairo's own throttle 429 is never reported as CypherFy's limiter", async () => {
+  const { redis, mw } = setup();
+  redis.store.set(`kairo:throttle:auth:${IP_HASH}`, JSON.stringify({ rule: 'R1a', level: 'throttle' }));
+  await run(mw, fakeReq(), fakeRes()); // passes the gate
+  const res = fakeRes();
+  await run(mw, fakeReq(), res); // Kairo answers 429
+  res.finishWith?.(429);
+  await new Promise((r) => setTimeout(r, 10));
+  assert.ok(!writtenEvents(redis).some((e) => e.type === 'auth.app_throttled'));
 });
