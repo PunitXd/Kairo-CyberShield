@@ -9,8 +9,18 @@ import SeverityGlyph from './SeverityGlyph.jsx';
 import ActionPill from './ActionPill.jsx';
 import Countdown from './Countdown.jsx';
 import HashValue from './HashValue.jsx';
+import { formatClock } from '../utils/formatTime.js';
 
-export default function IncidentRow({ incident, action, now, isNew, isLatest, selected, tabIndex, onOpen, onFocus }) {
+// The Incidents screen adds Opened and Closed (BRIEF §6 S3): today's times as
+// 14:02:11, older ones with the date.
+const when = (d, now) => {
+  if (!d) return '—';
+  const ms = new Date(d).getTime();
+  if (now - ms < 20 * 3600_000) return formatClock(ms);
+  return new Date(ms).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+};
+
+export default function IncidentRow({ incident, action, now, isNew, isLatest, selected, tabIndex, onOpen, onFocus, wide = false }) {
   const classes = ['row', 'row--interactive'];
   if (isNew) classes.push('row--new');
   if (isLatest) classes.push('row--latest');
@@ -36,6 +46,7 @@ export default function IncidentRow({ incident, action, now, isNew, isLatest, se
         <span className="row__rule mono">
           {incident.ruleId}
           {incident.ruleVersion ? ` v${incident.ruleVersion}` : ''}
+          {incident.falsePositive ? ' · false positive' : ''}
         </span>
       </td>
       <td>
@@ -47,6 +58,12 @@ export default function IncidentRow({ incident, action, now, isNew, isLatest, se
       <td className="row__expires">
         <Countdown expiresAt={action.expiresAt} now={now} />
       </td>
+      {wide && (
+        <>
+          <td className="row__time mono">{when(incident.detectedAt, now)}</td>
+          <td className="row__time mono">{when(incident.closedAt, now)}</td>
+        </>
+      )}
     </tr>
   );
 }

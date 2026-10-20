@@ -44,17 +44,19 @@ const cursorOf = (docs) => {
   return cur;
 };
 
-/** Applies the subset of Mongo filters the controllers use: equality, $gte, $lt, $in. */
+/** Applies the subset of Mongo filters the controllers use: equality (incl. array element), $gte, $lt, $in, $regex, $or. */
 const matchesFilter = (doc, filter) =>
   Object.entries(filter).every(([k, cond]) => {
+    if (k === '$or') return cond.some((f) => matchesFilter(doc, f));
     const v = doc[k];
     if (cond && typeof cond === 'object' && !(cond instanceof Date)) {
       if ('$gte' in cond && !(v >= cond.$gte)) return false;
       if ('$lt' in cond && !(v < cond.$lt)) return false;
       if ('$in' in cond && !cond.$in.includes(v)) return false;
+      if ('$regex' in cond && !new RegExp(cond.$regex).test(String(v))) return false;
       return true;
     }
-    return v === cond;
+    return Array.isArray(v) ? v.includes(cond) : v === cond;
   });
 
 const fakeCollection = (docs) => ({

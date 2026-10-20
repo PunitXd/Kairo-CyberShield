@@ -4,6 +4,10 @@
 // while a block or throttle is active; Mark false positive (optionally with a
 // 24 h allowlist) sits next to it (PHASES Oct 21 #4). Extend is cut. Esc
 // returns focus to the row that opened it.
+//
+// Two hosts: the Overview renders it at /incidents/:id through <Outlet> (id
+// from the route, data from the outlet context); the Incidents screen renders
+// it directly with `id`, `context` and `onClose` props (?open=<id>).
 
 import { useCallback } from 'react';
 import { useNavigate, useOutletContext, useParams } from 'react-router';
@@ -69,10 +73,12 @@ function UnblockButton({ scope, subject, blockedReason, onUnblocked }) {
   );
 }
 
-export default function IncidentDrawer() {
-  const { id } = useParams();
+export default function IncidentDrawer({ id: idProp, context, onClose } = {}) {
+  const params = useParams();
+  const outlet = useOutletContext();
+  const id = idProp ?? params.id;
   const navigate = useNavigate();
-  const { incidents, blocks, now, blockedReason, killSwitch, removeBlocksFor } = useOutletContext();
+  const { incidents, blocks, now, blockedReason, killSwitch, removeBlocksFor } = context ?? outlet;
   const { detail, error, loading, reload } = useIncidentDetail(id);
   const { connection } = useConsole();
   const allowlist = useAllowlist(connection);
@@ -81,9 +87,10 @@ export default function IncidentDrawer() {
   const incident = detail?.incident ?? incidents.find((i) => i._id === id);
 
   const close = useCallback(() => {
-    navigate('/');
+    if (onClose) onClose();
+    else navigate('/');
     requestAnimationFrame(() => document.querySelector(`tr[data-incident-id="${id}"]`)?.focus());
-  }, [navigate, id]);
+  }, [navigate, id, onClose]);
 
   if (!incident) {
     return (

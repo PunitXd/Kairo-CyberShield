@@ -1595,3 +1595,48 @@ details[open] > .job__summary::after {
   left: 0;
   right: auto;
 }
+
+/* ---- Incidents (S3, PHASES Oct 21 #5) ---- */
+
+.filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.filterbar__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--type-label);
+  color: var(--text-2);
+}
+.filterbar__field .input {
+  font-size: var(--type-body);
+}
+.filterbar__hint {
+  color: var(--text-3);
+}
+.filterbar__hint--bad {
+  color: var(--sev-medium);
+}
+.filterbar__clear {
+  align-self: center;
+}
+.incidents__summary {
+  margin-bottom: var(--space-3);
+  font-size: var(--type-label);
+  color: var(--text-2);
+}
+.incidents__pager {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+.row__time {
+  white-space: nowrap;
+  color: var(--text-2);
+}

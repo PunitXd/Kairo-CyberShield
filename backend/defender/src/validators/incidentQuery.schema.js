@@ -13,6 +13,13 @@ export const incidentQuerySchema = z.strictObject({
     .optional(),
   severity: z.enum(['info', 'low', 'medium', 'high', 'critical']).optional(),
   since: z.coerce.number().int().positive().optional(), // ms epoch
+  // A source hash or its first ≥ 4 hex characters, with or without "ip:".
+  source: z
+    .string()
+    .regex(/^(ip:)?[0-9a-f]{4,16}$/)
+    .transform((s) => s.replace(/^ip:/, ''))
+    .optional(),
+  falsePositive: z.literal('true').optional(),
   limit: z.coerce.number().int().min(1).max(200).default(50),
   cursor: z.string().regex(ULID).optional(), // ulid of the last item of the previous page
 });

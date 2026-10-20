@@ -17,6 +17,8 @@ const incidents = Array.from({ length: 5 }, (_, i) => ({
   status: 'open',
   subject: H1,
   detectedAt: new Date(NOW - i * 60_000),
+  rulesFired: i % 2 ? ['R2a'] : ['R1a', 'R1b'],
+  falsePositive: i === 2,
 }));
 
 const deps = {
@@ -120,8 +122,17 @@ test('GET /api/incidents is newest first, filterable, and cursor-paginated', asy
   assert.ok(r2a.body.items.length === 2 && r2a.body.items.every((i) => i.ruleId === 'R2a'));
 });
 
+test('GET /api/incidents filters by any rule that fired, source hash prefix and false positive', async () => {
+  const r1a = await rawGet(port, '/api/incidents?ruleId=R1a');
+  assert.deepEqual(r1a.body.items.map((i) => i._id.slice(-2)), ['04', '02', '00'], 'escalated R1b incidents count for R1a too');
+  assert.equal((await rawGet(port, `/api/incidents?source=${H1.slice(0, 6)}`)).body.items.length, 5);
+  assert.equal((await rawGet(port, `/api/incidents?source=ip:${H1}`)).body.items.length, 5);
+  assert.equal((await rawGet(port, '/api/incidents?source=ffff')).body.items.length, 0);
+  assert.deepEqual((await rawGet(port, '/api/incidents?falsePositive=true')).body.items.map((i) => i._id.slice(-2)), ['02']);
+});
+
 test('GET /api/incidents rejects bad or unknown parameters without echoing them', async () => {
-  for (const q of ['limit=0', 'limit=500', 'status=deleted', 'cursor=not-a-ulid', 'ruleId=$ne', 'evil=1', 'status=open&status=shadow']) {
+  for (const q of ['limit=0', 'limit=500', 'status=deleted', 'cursor=not-a-ulid', 'ruleId=$ne', 'evil=1', 'status=open&status=shadow', 'source=.*', 'source=abc', 'source=%5E(a%2B)%2B', 'falsePositive=yes']) {
     const { status, body } = await rawGet(port, `/api/incidents?${q}`);
     assert.equal(status, 400, q);
     assert.equal(body.error.code, 'INVALID_QUERY', q);

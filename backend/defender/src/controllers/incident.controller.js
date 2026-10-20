@@ -1,4 +1,5 @@
-// /api/incidents — list (newest first, cursor-paginated by ulid) and detail
+// /api/incidents — list (newest first, cursor-paginated by ulid; filters by
+// state, rule fired, severity, time, source hash prefix, false positive) and detail
 // with its timeline (ARCH §9.2). Query values are validated by strict schemas
 // before they reach Mongo, so nothing from the request is ever used as a
 // query operator.
@@ -17,7 +18,11 @@ export const listIncidents = asyncHandler(async (req, res) => {
   const q = incidentQuerySchema.parse(req.query);
   const filter = {};
   if (q.status) filter.status = q.status;
-  if (q.ruleId) filter.ruleId = q.ruleId;
+  // Any rule that fired in the incident: R1a also finds incidents that escalated to R1b.
+  if (q.ruleId) filter.$or = [{ ruleId: q.ruleId }, { rulesFired: q.ruleId }];
+  // Validated hex only (see incidentQuery.schema), so the prefix is a literal, never a pattern.
+  if (q.source) filter.subject = { $regex: `^${q.source}` };
+  if (q.falsePositive) filter.falsePositive = true;
   if (q.severity) filter.severity = q.severity;
   if (q.since) filter.detectedAt = { $gte: new Date(q.since) };
   if (q.cursor) filter._id = { $lt: q.cursor };
