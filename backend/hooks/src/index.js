@@ -20,6 +20,7 @@ import { createHttpMiddleware } from './http.middleware.js';
 import { attachSocketLayer, createSocketLayer } from './socket.middleware.js';
 import { createJoinGuard } from './joinGuard.service.js';
 import { createCommandService } from './command.service.js';
+import { createHeartbeat } from './heartbeat.service.js';
 import { createLogger, logInfo } from './utils/logger.js';
 
 const ENVS = ['staging', 'production', 'local'];
@@ -72,6 +73,7 @@ export const initKairo = async ({ env = process.env } = {}) => {
 
     middleware = createHttpMiddleware({ redis, emitter, hasher, env: env.KAIRO_ENV, inst, timeoutMs, log });
     context = { redis, emitter, hasher, env: env.KAIRO_ENV, inst, timeoutMs, log };
+    createHeartbeat({ redis, emitter, inst, timeoutMs, log }).beat();
     startSocketSide();
     logInfo('kairo.enabled', { env: env.KAIRO_ENV, inst, timeoutMs, enforce: env.KAIRO_ENV !== 'production' });
   } catch (err) {

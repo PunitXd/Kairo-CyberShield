@@ -21,6 +21,7 @@ import { createUnblockService } from './services/unblock.service.js';
 import { createKillSwitchService } from './services/killswitch.service.js';
 import { createGithubPoller } from './pollers/github.poller.js';
 import { createAckService } from './services/ack.service.js';
+import { createRates } from './services/rates.service.js';
 import { createApp } from './app.js';
 import { rules } from './rules/index.js';
 
@@ -74,10 +75,16 @@ const boot = async () => {
     log,
   });
   const acks = createAckService({ mongo, bus, log });
+  const rates = createRates({ rules, getConfig: configStore.get, bus });
   const consumer = createConsumer({
     redis: consumerRedis,
     // kairo.ack answers a command action; every other event goes to the rules.
-    runner: { handle: (event) => (event.type === 'kairo.ack' ? acks.handle(event) : runner.handle(event)) },
+    runner: {
+      handle: (event) => {
+        rates.record(event); // live graphs: every accepted event
+        return event.type === 'kairo.ack' ? acks.handle(event) : runner.handle(event);
+      },
+    },
     log,
     getStaleMs: () => env.staleEventMs ?? configStore.get().global.staleEventMs,
   });
@@ -111,6 +118,7 @@ const boot = async () => {
     killSwitch,
     getConfig: configStore.get,
     getPipelineSync: pipelinePoller ? pipelinePoller.getSync : null,
+    getRates: rates.history,
   };
   const httpServer = createServer(createApp(deps));
   const realtime = createRealtime({ httpServer, bus, log, getStatus: () => getSystemStatus(deps) });
@@ -124,6 +132,7 @@ const boot = async () => {
     consumer.stop();
     blockWatcher.stop();
     pipelinePoller?.stop();
+    rates.stop();
     await realtime.close(); // also closes the HTTP server
     await Promise.allSettled([redis.quit(), consumerRedis.quit(), mongo.client.close()]);
     process.exit(0);

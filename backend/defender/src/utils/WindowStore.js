@@ -55,6 +55,18 @@ export class WindowStore {
     return all.size;
   }
 
+  /** The highest windowed sum of any key for a rule right now (e.g. the busiest source). */
+  peak(ruleId, windowMs, now) {
+    const prefix = `${ruleId}|`;
+    let best = 0;
+    for (const key of this.series.keys()) {
+      if (!key.startsWith(prefix)) continue;
+      const sum = this.sum(ruleId, key.slice(prefix.length), windowMs, now);
+      if (sum > best) best = sum;
+    }
+    return best;
+  }
+
   /** Forget a rule's counts for one subject (called after the rule fires). */
   reset(ruleId, subject) {
     this.series.delete(`${ruleId}|${subject}`);

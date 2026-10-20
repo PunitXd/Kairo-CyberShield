@@ -1,9 +1,9 @@
 // Defender, Redis and Hooks status (BRIEF §7). The shape changes with the
 // state (● live, ◔ reconnecting, ○ down), never only the colour.
 //
-// Hooks: the hooks heartbeat is not built in the Demo MVP, so this reports
-// honestly whether Kairo has received events from CypherFy since the Defender
-// started, rather than claiming a live link.
+// Hooks: live while a CypherFy instance's heartbeat key exists (the hooks
+// refresh it every 10 s, even with no traffic); the tooltip says when each
+// instance last saw real traffic.
 
 import { formatClock, formatElapsed } from '../utils/formatTime.js';
 
@@ -39,16 +39,16 @@ export default function ConnectionStatus({ connection, connectionSince, elapsedM
       ? { state: 'live', text: 'live' }
       : { state: 'down', text: 'down' };
 
-  const hookEvents = known ? status.hooks ?? [] : [];
+  const instances = known ? status.hooks ?? [] : [];
+  const alive = instances.filter((h) => h.alive);
+  const describe = (h) => `${h.inst}: ${h.alive ? 'heartbeat OK' : 'no heartbeat'}, last event ${h.lastEventAt ? formatClock(h.lastEventAt) : 'none yet'}`;
   const hooks = !known
     ? { state: 'unknown', text: '—', title: '' }
-    : hookEvents.length
-      ? {
-          state: 'live',
-          text: 'events seen',
-          title: hookEvents.map((h) => `Last event from ${h.inst} at ${formatClock(h.lastEventAt)}`).join('\n'),
-        }
-      : { state: 'unknown', text: 'no events yet', title: 'No events from CypherFy since the Defender started.' };
+    : alive.length
+      ? { state: 'live', text: 'live', title: instances.map(describe).join('\n') }
+      : instances.length
+        ? { state: 'down', text: 'no heartbeat', title: instances.map(describe).join('\n') }
+        : { state: 'unknown', text: 'not seen', title: 'No heartbeat from CypherFy hooks yet.' };
 
   return (
     <ul className="conn" aria-label="Connection status">

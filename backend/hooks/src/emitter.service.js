@@ -7,6 +7,9 @@ import { KEYS, STREAM_MAXLEN, toStreamFields } from './schema/index.js';
 import { withTimeout } from './redis.service.js';
 
 export const createEmitter = ({ redis, timeoutMs, log }) => ({
+  /** ts of the last event written, for the heartbeat (null before the first). */
+  lastEventAt: null,
+
   /** @returns {Promise<boolean>} true if the event was written */
   async emit(event) {
     let fields;
@@ -23,6 +26,7 @@ export const createEmitter = ({ redis, timeoutMs, log }) => ({
     }
     try {
       await withTimeout(redis.xadd(KEYS.events, 'MAXLEN', '~', STREAM_MAXLEN, '*', ...fields), timeoutMs);
+      this.lastEventAt = Math.max(this.lastEventAt ?? 0, event.ts);
       return true;
     } catch {
       log('kairo.redis_unavailable', { op: 'xadd' });
