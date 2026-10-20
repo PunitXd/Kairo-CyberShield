@@ -98,7 +98,8 @@ services:
     volumes: ["./attacks:/app/attacks:ro", "./node_modules:/app/node_modules:ro"]
     read_only: true
     user: "node"
-    depends_on: { cypherfy-backend: { condition: service_healthy } }
+    # No depends_on: `docker compose run attacker` must never touch cypherfy-backend
+    # (it would recreate it from .env's CYPHERFY_TAG and undo a deploy or rollback).
 
 volumes:
   mongo-data:

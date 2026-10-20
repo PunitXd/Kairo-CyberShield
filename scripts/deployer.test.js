@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { composeArgs, parseCommand } from './deployer.js';
+import { composeArgs, parseCommand, pointerTag } from './deployer.js';
 
 const ID = '01JAA0000000000000000000AA';
 const msg = (o) => JSON.stringify({ v: 1, op: 'deploy', tag: 'abc1234', deploymentId: ID, ...o });
@@ -27,6 +27,13 @@ test('deployer accepts only deploy/rollback with a SHA tag and ulid ids', () => 
 
 test('deployer runs one fixed compose command: no shell, no build, cypherfy-backend only', () => {
   const args = composeArgs('/repo');
-  assert.deepEqual(args, ['compose', '--project-directory', '/repo', 'up', '-d', '--no-deps', '--no-build', 'cypherfy-backend']);
+  assert.deepEqual(args, ['compose', '--project-directory', '/repo', 'up', '-d', '--no-deps', '--no-build', '--force-recreate', 'cypherfy-backend']);
   assert.ok(!args.some((a) => /[;&|$`]/.test(a)));
+});
+
+test('the deployer re-points the tag Compose runs (CYPHERFY_TAG), and only to a plain tag', () => {
+  assert.equal(pointerTag({}), 'dev');
+  assert.equal(pointerTag({ CYPHERFY_TAG: 'dev' }), 'dev');
+  assert.throws(() => pointerTag({ CYPHERFY_TAG: 'dev; rm -rf /' }));
+  assert.throws(() => pointerTag({ CYPHERFY_TAG: '../x' }));
 });

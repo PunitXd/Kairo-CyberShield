@@ -11,9 +11,12 @@
 //   { op: 'rollback', tag, deploymentId, actionId }
 //
 // The tag must be a git SHA (^[a-f0-9]{7,40}$) whose image cypherfy-backend:<tag>
-// is already built (deploy.sh builds it). It runs
-//   CYPHERFY_TAG=<tag> docker compose up -d --no-deps --no-build cypherfy-backend
-// through execFile with an argument array (no shell, nothing interpolated) and
+// is already built (deploy.sh builds it). The deployer re-points the tag
+// Compose runs (CYPHERFY_TAG from .env, usually `dev`) at that image, then
+//   docker compose up -d --no-deps --no-build --force-recreate cypherfy-backend
+// so any later Compose command (`run`, `up`, demo:reset) keeps the deployed
+// version instead of quietly reverting it. Everything goes through execFile
+// with an argument array (no shell, nothing interpolated), and it
 // reports back with the deploy token: `accepted` at once (the Defender fails a
 // rollback that isn't acknowledged within 15 s), then `started` or `failed`.
 // Commands run one at a time. Prints no secrets.
@@ -49,7 +52,14 @@ export const parseCommand = (raw) => {
 };
 
 /** The exact argv the deployer runs (no shell). */
-export const composeArgs = (root) => ['compose', '--project-directory', root, 'up', '-d', '--no-deps', '--no-build', SERVICE];
+export const composeArgs = (root) => ['compose', '--project-directory', root, 'up', '-d', '--no-deps', '--no-build', '--force-recreate', SERVICE];
+
+/** The tag Compose runs for cypherfy-backend (CYPHERFY_TAG in .env); a plain Docker tag only. */
+export const pointerTag = (env = process.env) => {
+  const t = env.CYPHERFY_TAG || 'dev';
+  if (!/^[A-Za-z0-9_][A-Za-z0-9_.-]{0,40}$/.test(t)) throw new Error('CYPHERFY_TAG in .env is not a valid image tag');
+  return t;
+};
 
 const run = (file, args, opts = {}) =>
   new Promise((resolve) => {
@@ -99,7 +109,14 @@ const main = async () => {
       return report(cmd, 'failed', `image ${image} is not built`);
     }
     const started = Date.now();
-    const up = await run('docker', composeArgs(ROOT), { cwd: ROOT, env: { ...process.env, CYPHERFY_TAG: cmd.tag } });
+    // Point the tag Compose runs at this image, so the deploy survives later Compose commands.
+    const pointer = `${SERVICE}:${pointerTag()}`;
+    const retag = await run('docker', ['tag', image, pointer]);
+    if (!retag.ok) {
+      log(`  failed: could not tag ${image} as ${pointer}`);
+      return report(cmd, 'failed', `could not tag the image: ${lastLine(retag.stderr)}`);
+    }
+    const up = await run('docker', composeArgs(ROOT), { cwd: ROOT, env: { ...process.env, CYPHERFY_TAG: pointerTag() } });
     if (!up.ok) {
       log(`  failed: ${lastLine(up.stderr)}`);
       return report(cmd, 'failed', `docker compose failed: ${lastLine(up.stderr)}`);
@@ -112,7 +129,7 @@ const main = async () => {
   sub.on('error', (err) => log(`redis: ${err.message}`));
   await sub.connect();
   await sub.subscribe(DEPLOY_KEYS.commands);
-  log(`deployer ready: ${DEPLOY_KEYS.commands} on ${redisUrl.replace(/\/\/[^@]*@/, '//')} → docker compose (${SERVICE} only)`);
+  log(`deployer ready: ${DEPLOY_KEYS.commands} on ${redisUrl.replace(/\/\/[^@]*@/, '//')} → docker compose (${SERVICE} only, served as ${SERVICE}:${pointerTag()})`);
 
   let queue = Promise.resolve();
   sub.on('message', (_channel, raw) => {
