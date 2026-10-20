@@ -20,6 +20,7 @@ const sessionOf = (e) => e.src.sessionKey ?? e.src.userHash ?? null;
 
 export const r3cConnFlood = {
   id: 'R3c',
+  name: 'Connection flood',
   family: 'socket',
   version: 1,
   on: ['socket.connect'],

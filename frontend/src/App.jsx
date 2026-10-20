@@ -16,6 +16,7 @@ import IncidentDrawer from './screens/Overview/IncidentDrawer.jsx';
 import Blocklist from './screens/Blocklist/Blocklist.jsx';
 import Pipeline from './screens/Pipeline/Pipeline.jsx';
 import Privacy from './screens/Privacy/Privacy.jsx';
+import Rules from './screens/Rules/Rules.jsx';
 import { useConsole } from './hooks/useConsole.js';
 
 function NotFound() {
@@ -54,6 +55,7 @@ export default function App() {
             </Route>
             <Route path="/blocks" element={<Blocklist />} />
             <Route path="/pipeline/:runId?" element={<Pipeline />} />
+            <Route path="/rules" element={<Rules />} />
             <Route path="/privacy" element={<Privacy />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

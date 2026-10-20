@@ -9,6 +9,7 @@ import { R1_ROUTES } from './r1aAuthSoft.rule.js';
 
 export const r1bCredentialStuffing = {
   id: 'R1b',
+  name: 'Credential stuffing',
   family: 'auth',
   version: 1,
   on: ['auth.fail'],

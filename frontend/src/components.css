@@ -1416,3 +1416,114 @@ details[open] > .job__summary::after {
     transition: none;
   }
 }
+
+/* ---- Rules & safety (S6, PHASES Oct 21 #3) ---- */
+
+.segmented__option:disabled {
+  color: var(--text-3);
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+.segmented__option[aria-pressed='true']:disabled {
+  text-decoration: none;
+}
+.safety {
+  margin-bottom: var(--space-6);
+  border-color: var(--border-strong);
+}
+.safety__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin: 0;
+}
+.safety__grid dt {
+  font-size: var(--type-label);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-2);
+  margin-bottom: var(--space-2);
+}
+.safety__grid dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+}
+.safety__value {
+  font-size: var(--type-heading);
+  font-weight: 600;
+}
+.safety__on {
+  color: var(--sev-critical);
+  font-weight: 600;
+}
+.safety__hint {
+  flex-basis: 100%;
+  font-size: var(--type-label);
+  color: var(--text-3);
+}
+.rules__version {
+  margin-left: var(--space-2);
+  font-size: var(--type-label);
+  font-weight: 400;
+  color: var(--text-3);
+}
+.rules__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.rules__table th,
+.rules__table td {
+  padding: var(--space-3) var(--space-3) var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+.rules__table thead th {
+  font-size: var(--type-label);
+  font-weight: 500;
+  color: var(--text-2);
+}
+.rules__rule {
+  font-weight: 400;
+}
+.rules__rule .mono,
+.rules__table td > .mono {
+  white-space: nowrap;
+}
+.rules__name {
+  margin-left: var(--space-1);
+  color: var(--text-2);
+}
+.rules__params {
+  display: block;
+  font-size: var(--type-label);
+  color: var(--text-3);
+}
+.rules__mode {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.rules__held {
+  font-size: var(--type-label);
+  color: var(--act-shadow);
+}
+.rules__num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+.rules__note {
+  margin-top: var(--space-4);
+  font-size: var(--type-label);
+  color: var(--text-3);
+}
+
+@media (max-width: 1279px) {
+  .safety__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -19,6 +19,7 @@ export const topEvents = (counts, n = 5) =>
 
 export const r3aFloodSoft = {
   id: 'R3a',
+  name: 'Socket event flood (soft)',
   family: 'socket',
   version: 1,
   on: ['socket.rate'],

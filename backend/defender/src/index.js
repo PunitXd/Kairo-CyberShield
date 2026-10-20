@@ -20,6 +20,7 @@ import { createRealtime } from './services/realtime.service.js';
 import { createUnblockService } from './services/unblock.service.js';
 import { createKillSwitchService } from './services/killswitch.service.js';
 import { createKnockService } from './services/knock.service.js';
+import { createRuleService } from './services/rule.service.js';
 import { createGithubPoller } from './pollers/github.poller.js';
 import { createAckService } from './services/ack.service.js';
 import { createRates } from './services/rates.service.js';
@@ -45,7 +46,6 @@ const boot = async () => {
     log.fatal({ msg: 'config.load_failed', path: env.rulesPath, error: err.message.slice(0, 300) });
     process.exit(1);
   }
-  process.on('SIGHUP', () => configStore.reload());
 
   const redis = new Redis(env.redisUrl);
   const consumerRedis = new Redis(env.redisUrl); // XREADGROUP BLOCK holds its connection
@@ -104,6 +104,9 @@ const boot = async () => {
   const unblock = createUnblockService({ redis, mongo, bus, log, hasher });
   const killSwitch = createKillSwitchService({ redis, mongo, bus, log, hasher });
   const knock = createKnockService({ redis, mongo, log, hasher });
+  const ruleService = createRuleService({ configStore, rules, mongo, redis, bus, log, hasher });
+  await ruleService.init(); // continue the config_versions history
+  process.on('SIGHUP', () => ruleService.reloadFromFile());
   // GitHub Actions poller (ARCH §4.4); off when GITHUB_REPO is unset.
   const pipelinePoller = env.github.repo
     ? createGithubPoller({ repo: env.github.repo, token: env.github.token, pollMs: env.github.pollMs, mongo, bus, log })
@@ -119,6 +122,7 @@ const boot = async () => {
     unblock,
     killSwitch,
     knock,
+    ruleService,
     getConfig: configStore.get,
     getPipelineSync: pipelinePoller ? pipelinePoller.getSync : null,
     getRates: rates.history,

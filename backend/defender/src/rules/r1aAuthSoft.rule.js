@@ -11,6 +11,7 @@ export const R1_ROUTES = new Set(['login', 'verify_otp', 'reset_password', 'fire
 
 export const r1aAuthSoft = {
   id: 'R1a',
+  name: 'Brute-force login (soft)',
   family: 'auth',
   version: 1,
   on: ['auth.fail'],

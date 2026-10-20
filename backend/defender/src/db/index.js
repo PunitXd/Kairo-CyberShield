@@ -19,6 +19,8 @@ const connectDB = async (uri) => {
   // GitHub Actions runs (ARCH §8.2), _id = GitHub run id. Kept across
   // demo resets so the Pipeline screen works without venue internet.
   const pipelineRuns = db.collection('pipeline_runs');
+  // Every rules config version (ARCH §8.2): kept forever, never reset.
+  const configVersions = db.collection('config_versions');
 
   await Promise.all([
     incidents.createIndex({ status: 1, detectedAt: -1 }),
@@ -32,9 +34,10 @@ const connectDB = async (uri) => {
     auditLog.createIndex({ at: 1 }, { expireAfterSeconds: DAYS_365, name: 'at_ttl' }),
     pipelineRuns.createIndex({ startedAt: -1 }),
     pipelineRuns.createIndex({ syncedAt: 1 }, { expireAfterSeconds: DAYS_90 }),
+    configVersions.createIndex({ version: -1 }),
   ]);
 
-  return { client, db, incidents, actions, auditLog, pipelineRuns };
+  return { client, db, incidents, actions, auditLog, pipelineRuns, configVersions };
 };
 
 export default connectDB;

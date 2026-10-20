@@ -65,3 +65,9 @@ export const getPipelineRun = (id) => request('GET', `/api/pipeline/runs/${encod
 
 /** The rates.tick history for the live chart → { windowSec, samples } (oldest first). */
 export const getRates = (windowSec = 300) => request('GET', '/api/rates', { params: { windowSec } });
+
+/** Rules with config, allowed modes, 7-day counts and the safety numbers → { configVersion, configPath, safety, items }. */
+export const getRules = () => request('GET', '/api/rules');
+
+/** Change one rule's mode (thresholds are read-only) → { configVersion, rule, changed }. */
+export const setRuleMode = (id, mode) => request('PATCH', `/api/rules/${encodeURIComponent(id)}`, { body: { mode } });

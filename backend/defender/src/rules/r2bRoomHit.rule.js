@@ -12,6 +12,7 @@
 
 export const r2bRoomHit = {
   id: 'R2b',
+  name: 'Flagged source hits a live room',
   family: 'room',
   version: 1,
   on: ['room.hit_while_flagged'],

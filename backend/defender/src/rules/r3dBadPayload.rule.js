@@ -8,6 +8,7 @@ import { describeWindow } from '../utils/describeWindow.js';
 
 export const r3dBadPayload = {
   id: 'R3d',
+  name: 'Malformed payloads',
   family: 'socket',
   version: 1,
   on: ['socket.invalid_payload'],

@@ -3,6 +3,10 @@
 // Every threshold lives in rules.json; code only holds defaults for tests.
 // The file is validated with a strict zod schema at load and on SIGHUP; an
 // invalid reload keeps the previous config and logs `config.reload_failed`.
+// Mode changes from the console (PATCH /api/rules/:id) go through replace(),
+// in memory: the container is read-only, so rules.json is never rewritten
+// and a Defender restart (or demo:reset) returns to the file. Every version
+// is snapshotted in Mongo config_versions by the rule service.
 
 import { readFileSync } from 'node:fs';
 
@@ -14,14 +18,27 @@ export const loadRulesConfig = (path) => rulesConfigSchema.parse(JSON.parse(read
 export const createConfigStore = (path, log) => {
   let current = loadRulesConfig(path);
   return {
+    path,
     get: () => current,
-    reload() {
+    /** The file as it is now (validated), or null if it is invalid. */
+    readFile() {
       try {
-        current = loadRulesConfig(path);
-        log.info({ msg: 'config.reloaded', configVersion: current.version });
+        return loadRulesConfig(path);
       } catch (err) {
         log.error({ msg: 'config.reload_failed', configVersion: current.version, error: err.message.slice(0, 300) });
+        return null;
       }
+    },
+    /** Swap in a whole config; validated first, so a bad one throws and changes nothing. */
+    replace(next) {
+      current = rulesConfigSchema.parse(next);
+      return current;
+    },
+    reload() {
+      const next = this.readFile();
+      if (!next) return;
+      current = next;
+      log.info({ msg: 'config.reloaded', configVersion: current.version });
     },
   };
 };

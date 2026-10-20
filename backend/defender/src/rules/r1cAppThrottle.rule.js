@@ -11,6 +11,7 @@ import { describeWindow } from '../utils/describeWindow.js';
 
 export const r1cAppThrottle = {
   id: 'R1c',
+  name: "CypherFy's own login limiter",
   family: 'app',
   version: 1,
   on: ['auth.app_throttled'],

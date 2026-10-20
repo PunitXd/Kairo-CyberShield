@@ -15,6 +15,7 @@ const SOFT_RULES = ['R3a', 'R3d'];
 
 export const r3bFloodHard = {
   id: 'R3b',
+  name: 'Socket event flood (hard)',
   family: 'socket',
   version: 1,
   on: ['socket.rate'],

@@ -12,6 +12,7 @@ import { describeWindow } from '../utils/describeWindow.js';
 
 export const r2aRoomGuess = {
   id: 'R2a',
+  name: 'Room-code guessing',
   family: 'room',
   version: 2,
   on: ['room.join.invalid'],
