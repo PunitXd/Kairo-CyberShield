@@ -3,10 +3,11 @@
 // icon, never colour alone (BRIEF §10).
 
 const RUN_WORD = { running: 'Running', passed: 'Passed', blocked: 'Blocked', error: 'Error' };
-const REASON_WORD = { secret: 'secret', dependency: 'dependency', build: 'build', scanner: 'scanner failed', cancelled: 'cancelled', timed_out: 'timed out' };
+const REASON_WORD = { secret: 'secret', dependency: 'dependency', image: 'image', build: 'build', scanner: 'scanner failed', cancelled: 'cancelled', timed_out: 'timed out' };
 const REASON_SENTENCE = {
   secret: 'Leaked secret',
   dependency: 'Vulnerable dependency',
+  image: 'Vulnerable container image',
   build: 'Build failed',
   scanner: 'A scanner failed',
 };
@@ -76,6 +77,17 @@ export const howToFix = (run) => {
       steps: [
         `Run npm audit fix in the affected project${pkgs.length ? ` (${pkgs.join(', ')})` : ''}, or bump the package by hand.`,
         'If no fix exists yet, replace the package or add an override for its patched dependency.',
+      ],
+    };
+  }
+  if (run.status === 'blocked' && run.reason === 'image') {
+    const images = [...new Set((run.findings ?? []).filter((f) => f.tool === 'trivy').map((f) => f.job.replace(/^image \((.+)\)$/, '$1')))];
+    return {
+      title: 'Patch the image. Every blocking CVE already has a fix.',
+      steps: [
+        `Move the Dockerfile${images.length ? ` for ${images.join(', ')}` : ''} to a newer exact base-image tag, and add \`apk upgrade --no-cache\` to patch OS packages that already have fixes.`,
+        'For an app package, upgrade it in package.json; drop tools the image does not need at runtime (npm, npx).',
+        'Rebuild and scan locally with the same flags: trivy image --severity HIGH,CRITICAL --ignore-unfixed <image>.',
       ],
     };
   }

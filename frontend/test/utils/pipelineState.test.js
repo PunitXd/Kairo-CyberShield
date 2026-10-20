@@ -64,6 +64,11 @@ test('how to fix: rotate first, and be honest that history is scanned', () => {
   assert.match(fix.steps.join(' '), /history/);
   assert.equal(howToFix({ status: 'passed' }), null);
   assert.match(howToFix({ status: 'blocked', reason: 'dependency', findings: [{ tool: 'npm-audit', ruleId: 'multer' }] }).steps[0], /multer/);
+  const image = howToFix({ status: 'blocked', reason: 'image', findings: [{ tool: 'trivy', job: 'image (frontend-web)', ruleId: 'CVE-2026-1' }] });
+  assert.match(image.title, /fix/);
+  assert.match(image.steps[0], /frontend-web/);
+  assert.equal(runStateLabel({ status: 'blocked', reason: 'image' }), 'Blocked · image');
+  assert.match(runKpiHint({ status: 'blocked', reason: 'image', branch: 'kairo', sha: 'abc1234' }), /^Vulnerable container image · kairo @ abc1234$/);
 });
 
 test('sync message only when something is wrong', () => {

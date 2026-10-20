@@ -10,7 +10,7 @@
 import { z } from 'zod';
 
 export const PIPELINE_STATUS = ['running', 'passed', 'blocked', 'error'];
-export const SCAN_JOBS = { secrets: 'gitleaks', deps: 'npm-audit' };
+export const SCAN_JOBS = { secrets: 'gitleaks', deps: 'npm-audit', image: 'trivy' };
 const MASK = '••••••••';
 const MAX_FINDINGS = 50;
 
@@ -88,11 +88,63 @@ export const parseNpmAuditReport = (report, project) => {
     .slice(0, MAX_FINDINGS);
 };
 
+const SEVERITY_RANK = { critical: 0, high: 1 };
+const trivyVulnSchema = z.object({
+  VulnerabilityID: z.string().regex(/^[A-Za-z0-9._-]{3,60}$/),
+  PkgName: z.string().regex(/^[@\w.+:/-]{1,214}$/),
+  InstalledVersion: zText(80).optional(),
+  FixedVersion: zText(120).optional(),
+  Severity: z.enum(['UNKNOWN', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL']),
+  Title: zText(160).optional(),
+});
+
+/** Trivy lists every fixed line ("5.0.10, 3.0.7, 2.1.5"); prefer the one on the installed major. */
+export const pickFixedVersion = (installed, fixed) => {
+  const options = String(fixed).split(',').map((v) => v.trim()).filter(Boolean);
+  const major = /^v?(\d+)\./.exec(String(installed ?? ''))?.[1];
+  return options.find((v) => major !== undefined && v.replace(/^v/, '').startsWith(`${major}.`)) ?? options[0];
+};
+
+/**
+ * Trivy image report (JSON) → fixable high/critical findings for one image.
+ * The workflow already passes --severity HIGH,CRITICAL --ignore-unfixed; this
+ * filters again, so a report run with other flags can't widen what is stored.
+ */
+export const parseTrivyReport = (report, project) => {
+  if (!report || typeof report !== 'object' || Array.isArray(report)) throw new Error('trivy report is not an object');
+  if (report.Results !== undefined && !Array.isArray(report.Results)) throw new Error('trivy report has no Results array');
+  const seen = new Set();
+  const findings = [];
+  for (const result of report.Results ?? []) {
+    for (const raw of Array.isArray(result?.Vulnerabilities) ? result.Vulnerabilities : []) {
+      const r = trivyVulnSchema.safeParse(raw);
+      if (!r.success || !['HIGH', 'CRITICAL'].includes(r.data.Severity) || !r.data.FixedVersion) continue;
+      const v = r.data;
+      const key = `${v.VulnerabilityID}:${v.PkgName}:${v.InstalledVersion}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      findings.push({
+        tool: 'trivy',
+        job: `image (${project})`,
+        ruleId: v.VulnerabilityID,
+        file: `${project} image · ${v.PkgName}`,
+        line: null,
+        severity: v.Severity.toLowerCase(),
+        title: `${v.PkgName} ${v.InstalledVersion ?? '?'} → ${pickFixedVersion(v.InstalledVersion, v.FixedVersion)}`,
+        fixAvailable: true,
+      });
+    }
+  }
+  return findings.sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]).slice(0, MAX_FINDINGS);
+};
+
 /** Artifact name → which parser reads its JSON files. */
 export const reportParserFor = (artifactName) => {
   if (artifactName === 'kairo-secrets') return (json) => parseGitleaksReport(json);
   const deps = /^kairo-deps-([\w-]{1,40})$/.exec(artifactName);
   if (deps) return (json) => parseNpmAuditReport(json, deps[1]);
+  const image = /^kairo-image-([\w-]{1,40})$/.exec(artifactName);
+  if (image) return (json) => parseTrivyReport(json, image[1]);
   return null;
 };
 
@@ -121,12 +173,13 @@ export const runOutcome = (run, jobs, findings, findingsState) => {
   const failed = jobs.filter((j) => j.status === 'failed');
   if (findings.some((f) => f.tool === 'gitleaks')) return { status: 'blocked', reason: 'secret' };
   if (findings.some((f) => f.tool === 'npm-audit')) return { status: 'blocked', reason: 'dependency' };
+  if (findings.some((f) => f.tool === 'trivy')) return { status: 'blocked', reason: 'image' };
   if (failed.some((j) => j.name === 'build')) return { status: 'blocked', reason: 'build' };
   // A scanner failed and its report had no findings. Without the reports
   // (no token yet) we can't tell a finding from a crash, so say which job failed.
   if (findingsState !== 'loaded') {
     const tool = failed.map((j) => scanToolOf(j.name)).find(Boolean);
-    if (tool) return { status: 'blocked', reason: tool === 'gitleaks' ? 'secret' : 'dependency' };
+    if (tool) return { status: 'blocked', reason: { gitleaks: 'secret', 'npm-audit': 'dependency', trivy: 'image' }[tool] };
   }
   return { status: 'error', reason: 'scanner' };
 };

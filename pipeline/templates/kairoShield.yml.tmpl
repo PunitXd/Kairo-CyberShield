@@ -1,13 +1,14 @@
 @@GENERATED@@
 # Kairo Shield security pipeline (Kairo ARCH §10.1, PRD F5).
 #
-# Fails any push or PR that leaks a secret or adds a high/critical production
-# dependency advisory; the build runs only when both checks pass. Reports are
-# uploaded as artifacts (Gitleaks output is redacted). The workflow needs no
-# repository secrets: it only reads code. A scanner error fails the job
-# (fail closed). Third-party actions are pinned to commit SHAs, and the
-# Gitleaks binary is verified against its published SHA-256. Runners are pinned
-# to @@RUNNER@@ so a moving ubuntu-latest image cannot change a run.
+# Fails any push or PR that leaks a secret, adds a high/critical production
+# dependency advisory, or builds a container image with a fixable high/critical
+# CVE; the build runs only when every check passes. Reports are uploaded as
+# artifacts (Gitleaks output is redacted). The workflow needs no repository
+# secrets: it only reads code. A scanner error fails the job (fail closed).
+# Third-party actions are pinned to commit SHAs, and the Gitleaks and Trivy
+# binaries are verified against their published SHA-256. Runners are pinned to
+# @@RUNNER@@ so a moving ubuntu-latest image cannot change a run.
 
 name: kairo-shield
 
@@ -92,9 +93,49 @@ jobs:
           name: kairo-deps-${{ matrix.project }}
           path: kairo/
           retention-days: 7
+@@BEGIN image@@
+
+  image:
+    needs: [secrets, deps]
+    runs-on: @@RUNNER@@
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [@@IMAGE_PROJECTS@@]
+    steps:
+      - uses: @@CHECKOUT@@
+
+      - name: Build the image
+        env:
+          PROJECT: ${{ matrix.project }}
+        run: docker build -t "kairo-scan/${PROJECT}:${GITHUB_SHA}" "${PROJECT}"
+
+      - name: Trivy (fixable high and critical)
+        env:
+          PROJECT: ${{ matrix.project }}
+          TRIVY_VERSION: @@TRIVY_VERSION@@
+          TRIVY_SHA256: @@TRIVY_SHA256@@
+        run: |
+          set -euo pipefail
+          curl -sSfL -o trivy.tgz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  trivy.tgz" | sha256sum -c -
+          tar xzf trivy.tgz trivy
+          mkdir -p kairo
+          # --ignore-unfixed: a CVE with no fix yet is reported by Trivy but can't
+          # be acted on, so it doesn't block (ARCH §10.2).
+          ./trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 \
+            --format json --output "kairo/image-${PROJECT}.json" "kairo-scan/${PROJECT}:${GITHUB_SHA}"
+
+      - uses: @@UPLOAD_ARTIFACT@@
+        if: always()
+        with:
+          name: kairo-image-${{ matrix.project }}
+          path: kairo/
+          retention-days: 7
+@@END image@@
 
   build:
-    needs: [secrets, deps]
+    needs: [secrets, deps@@IMAGE_NEEDS@@]
     runs-on: @@RUNNER@@
     steps:
       - uses: @@CHECKOUT@@

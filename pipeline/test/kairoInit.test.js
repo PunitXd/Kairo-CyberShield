@@ -70,7 +70,27 @@ test('render: matrix and build steps from the detected projects, actions pinned 
   for (const a of Object.values(versions.actions)) assert.ok(yml.includes(`${a.uses}@${a.sha}`));
   assert.ok(!yml.includes('@@'), 'every marker filled');
   assert.equal(renderWorkflow(detect(sampleRepo()), versions), yml, 'same input → same output');
-  assert.deepEqual(requiredChecks(found), ['secrets', 'deps (api)', 'deps (web)', 'build']);
+  assert.deepEqual(requiredChecks(found), ['secrets', 'deps (api)', 'deps (web)', 'image (api)', 'build']);
+});
+
+test('render: an image job for each Dockerfile in an npm project, Trivy pinned by version and checksum', () => {
+  const yml = renderWorkflow(detect(sampleRepo()), versions);
+  assert.match(yml, /^ {2}image:\n {4}needs: \[secrets, deps\]/m);
+  assert.match(yml, /image:[\s\S]*?project: \[api\]/, 'mobile has a Dockerfile but is not an npm project');
+  assert.match(yml, /--severity HIGH,CRITICAL --ignore-unfixed --exit-code 1/);
+  assert.ok(yml.includes(`TRIVY_SHA256: ${versions.trivy.sha256}`));
+  assert.match(yml, /sha256sum -c -/);
+  assert.match(yml, /^ {4}needs: \[secrets, deps, image\]$/m, 'build waits for the image scan');
+  assert.ok(!yml.includes('trivy-action'), 'no third-party action for Trivy');
+});
+
+test('render: no npm Dockerfile → no image job, and build needs only secrets + deps', () => {
+  const repo = sampleRepo();
+  const found = detect(repo);
+  found.dockerfiles = found.dockerfiles.filter((d) => !d.npm);
+  const yml = renderWorkflow(found, versions);
+  assert.ok(!/^ {2}image:/m.test(yml));
+  assert.match(yml, /^ {4}needs: \[secrets, deps\]$/m);
 });
 
 test('render: a repo without npm projects gets only the secrets job', () => {

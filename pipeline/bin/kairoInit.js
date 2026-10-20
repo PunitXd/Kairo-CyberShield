@@ -6,7 +6,8 @@
 //
 // Detects npm projects, Dockerfiles, Flutter projects and example env files,
 // then writes .github/workflows/kairo-shield.yml (Gitleaks + npm audit +
-// build, actions pinned to SHAs from versions.json) and .gitleaks.toml (keeps
+// Trivy image scan + build; actions pinned to SHAs and binaries to checksums
+// from versions.json) and .gitleaks.toml (keeps
 // the existing allowlist and its reasons; never allowlists anything itself).
 // --dry-run prints the plan and the workflow and writes nothing; an existing
 // file that would change needs --force. Prints the branch-protection steps to
@@ -39,7 +40,7 @@ export const run = (argv, out = console.log) => {
   out('Detected');
   out(`  npm projects     ${list(found.npmProjects.map((p) => p.dir))}  → npm audit (production, high/critical) + build`);
   for (const u of found.uncoveredNpm) out(`  not covered      ${u.dir}: ${u.reason}`);
-  out(`  Dockerfiles      ${list(found.dockerfiles.map((d) => `${d.dir}${d.npm ? '' : ' (not an npm project)'}`))}  → image scan comes with the image job`);
+  out(`  Dockerfiles      ${list(found.dockerfiles.map((d) => `${d.dir}${d.npm ? '' : ' (not an npm project: not scanned)'}`))}  → Trivy image scan (fixable high/critical)`);
   out(`  Flutter          ${list(found.flutterProjects.map((p) => p.dir))}${found.flutterProjects.length ? '  → not covered by dependency scanning in v1' : ''}`);
   out(`  example files    ${list(found.exampleFiles.map((f) => `${f.path} (${f.allowlisted ? 'allowlisted' : 'not allowlisted'})`))}`);
   if (found.exampleFiles.some((f) => !f.allowlisted)) {

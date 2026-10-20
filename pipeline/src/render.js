@@ -19,9 +19,16 @@ export const generatedHeader = (versions) =>
     '#',
   ].join('\n');
 
+const SECTION = /^@@BEGIN (\w+)@@\n([\s\S]*?)^@@END \1@@\n/gm;
+
 const fill = (text, sections, values) => {
-  const out = text
-    .replace(/^@@BEGIN (\w+)@@\n([\s\S]*?)^@@END \1@@\n/gm, (_m, name, body) => (sections[name] ? body : ''))
+  // Sections can nest (image inside npm): resolve until none are left.
+  let resolved = text;
+  for (let prev = null; prev !== resolved; ) {
+    prev = resolved;
+    resolved = resolved.replace(SECTION, (_m, name, body) => (sections[name] ? body : ''));
+  }
+  const out = resolved
     .replace(/@@([A-Z0-9_]+)@@/g, (m, key) => {
       if (!(key in values)) throw new Error(`template value missing: ${key}`);
       return values[key];
@@ -43,8 +50,13 @@ export const renderWorkflow = (detected, versions = loadVersions()) => {
     ...projects.map((p) => `      - run: npm ci --prefix ${p.dir}`),
     ...projects.filter((p) => p.hasBuild).map((p) => `      - run: npm run build --prefix ${p.dir}`),
   ];
-  if (!/^[0-9a-f]{64}$/.test(versions.gitleaks.sha256)) throw new Error('gitleaks sha256 must be pinned');
-  return fill(template('kairoShield.yml.tmpl'), { npm: projects.length > 0 }, {
+  // One image job per Dockerfile that belongs to an npm project (ARCH §10.3);
+  // other Dockerfiles are listed as "not scanned".
+  const images = detected.dockerfiles.filter((d) => d.npm).map((d) => d.dir);
+  for (const tool of ['gitleaks', 'trivy']) {
+    if (!/^[0-9a-f]{64}$/.test(versions[tool].sha256)) throw new Error(`${tool} sha256 must be pinned`);
+  }
+  return fill(template('kairoShield.yml.tmpl'), { npm: projects.length > 0, image: images.length > 0 }, {
     GENERATED: generatedHeader(versions),
     RUNNER: versions.runner,
     CHECKOUT: action(versions, 'checkout'),
@@ -54,6 +66,10 @@ export const renderWorkflow = (detected, versions = loadVersions()) => {
     GITLEAKS_SHA256: versions.gitleaks.sha256,
     NODE_VERSION: versions.node,
     NPM_PROJECTS: projects.map((p) => p.dir).join(', '),
+    IMAGE_PROJECTS: images.join(', '),
+    IMAGE_NEEDS: images.length ? ', image' : '',
+    TRIVY_VERSION: versions.trivy.version,
+    TRIVY_SHA256: versions.trivy.sha256,
     BUILD_STEPS: buildSteps.join('\n'),
   });
 };
@@ -78,5 +94,6 @@ export const renderGitleaks = (detected, versions = loadVersions()) => {
 export const requiredChecks = (detected) => [
   'secrets',
   ...detected.npmProjects.map((p) => `deps (${p.dir})`),
+  ...detected.dockerfiles.filter((d) => d.npm).map((d) => `image (${d.dir})`),
   ...(detected.npmProjects.length ? ['build'] : []),
 ];

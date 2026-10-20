@@ -4,6 +4,8 @@ import assert from 'node:assert/strict';
 import {
   parseGitleaksReport,
   parseNpmAuditReport,
+  parseTrivyReport,
+  pickFixedVersion,
   redactSecret,
   reportParserFor,
   runOutcome,
@@ -112,9 +114,33 @@ test('parseNpmAuditReport keeps high and critical advisories only', () => {
   assert.throws(() => parseNpmAuditReport({ error: { code: 'ENOAUDIT' } }, 'backend'), /error/);
 });
 
+test('parseTrivyReport keeps fixable high and critical vulnerabilities, critical first, deduplicated', () => {
+  const vuln = (id, pkg, sev, fixed = '1.2.3') => ({ VulnerabilityID: id, PkgName: pkg, InstalledVersion: '1.0.0', FixedVersion: fixed, Severity: sev, Title: 't', Description: 'long text that is dropped' });
+  const report = {
+    SchemaVersion: 2,
+    Results: [
+      { Target: 'kairo-scan/backend:abc (alpine 3.24)', Type: 'alpine', Vulnerabilities: [vuln('CVE-2026-1', 'libcrypto3', 'HIGH', '3.3.7-r0'), vuln('CVE-2026-2', 'curl', 'MEDIUM')] },
+      { Target: 'Node.js', Type: 'node-pkg', Vulnerabilities: [vuln('CVE-2025-47935', 'multer', 'CRITICAL', '2.0.0, 1.4.6'), vuln('CVE-2025-47935', 'multer', 'CRITICAL'), vuln('CVE-2026-3', 'lodash', 'HIGH', '')] },
+      { Target: 'app', Type: 'node-pkg' },
+    ],
+  };
+  const findings = parseTrivyReport(report, 'backend');
+  assert.deepEqual(findings, [
+    { tool: 'trivy', job: 'image (backend)', ruleId: 'CVE-2025-47935', file: 'backend image · multer', line: null, severity: 'critical', title: 'multer 1.0.0 → 1.4.6', fixAvailable: true },
+    { tool: 'trivy', job: 'image (backend)', ruleId: 'CVE-2026-1', file: 'backend image · libcrypto3', line: null, severity: 'high', title: 'libcrypto3 1.0.0 → 3.3.7-r0', fixAvailable: true },
+  ]);
+  assert.deepEqual(parseTrivyReport({ SchemaVersion: 2, ArtifactName: 'x' }, 'web'), [], 'a clean image has no Results');
+  assert.equal(pickFixedVersion('2.0.2', '5.0.10, 3.0.7, 2.1.5, 1.1.19'), '2.1.5', 'same major line');
+  assert.equal(pickFixedVersion('1.4.5-lts.2', '2.0.0'), '2.0.0', 'no fix on this line: the first one');
+  assert.equal(pickFixedVersion('3.3.3-r0', '3.3.7-r0'), '3.3.7-r0');
+  assert.throws(() => parseTrivyReport([], 'web'), /not an object/);
+  assert.throws(() => parseTrivyReport({ Results: 'x' }, 'web'), /Results/);
+});
+
 test('reportParserFor maps the workflow artifact names', () => {
   assert.ok(reportParserFor('kairo-secrets'));
   assert.deepEqual(reportParserFor('kairo-deps-frontend-web')({ vulnerabilities: {} }), []);
+  assert.deepEqual(reportParserFor('kairo-image-frontend-web')({ Results: [] }), []);
   assert.equal(reportParserFor('something-else'), null);
 });
 
@@ -176,6 +202,9 @@ test('runOutcome: running, passed, blocked by build, scanner error, cancelled', 
   // Without the reports (no token), a failed scanner job is reported by job.
   assert.deepEqual(runOutcome(failure, jobs('secrets'), [], 'token_required'), { status: 'blocked', reason: 'secret' });
   assert.deepEqual(runOutcome(failure, jobs('deps (backend)'), [], 'token_required'), { status: 'blocked', reason: 'dependency' });
+  assert.deepEqual(runOutcome(failure, jobs('image (backend)'), [], 'token_required'), { status: 'blocked', reason: 'image' });
+  assert.deepEqual(runOutcome(failure, jobs('image (backend)'), [{ tool: 'trivy' }], 'loaded'), { status: 'blocked', reason: 'image' });
+  assert.deepEqual(runOutcome(failure, jobs('image (backend)'), [], 'loaded'), { status: 'error', reason: 'scanner' }, 'Trivy broke');
   assert.deepEqual(runOutcome({ status: 'completed', conclusion: 'cancelled' }, [], [], 'pending'), { status: 'error', reason: 'cancelled' });
 });
 

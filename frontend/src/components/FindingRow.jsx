@@ -1,4 +1,5 @@
-// One scanner finding (BRIEF Flow C): file:line, rule, severity and, for a
+// One scanner finding (BRIEF Flow C): file:line (or "backend image · pkg" for
+// Trivy), rule (CVE id), severity, and for a
 // secret, only the redacted value the Defender stored ("AKIA••••••••"). The
 // full secret never reaches the console: the workflow redacts it and the
 // Defender redacts it again before storing.
@@ -17,7 +18,7 @@ export default function FindingRow({ finding }) {
       )}
       {finding.title && <span className="finding__title">{finding.title}</span>}
       {finding.commit && <span className="finding__commit mono">in {finding.commit}</span>}
-      {finding.tool === 'npm-audit' && <span className="finding__commit">{finding.fixAvailable ? 'fix available' : 'no fix yet'}</span>}
+      {(finding.tool === 'npm-audit' || finding.tool === 'trivy') && <span className="finding__commit">{finding.fixAvailable ? 'fix available' : 'no fix yet'}</span>}
     </li>
   );
 }
