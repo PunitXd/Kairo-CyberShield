@@ -93,7 +93,8 @@ services:
     image: node:22-alpine
     profiles: ["attack"]
     working_dir: /app
-    volumes: ["./attacks:/app/attacks:ro"]
+    # node_modules (read-only) so flood.js can import socket.io-client; the host resolves it by walking up.
+    volumes: ["./attacks:/app/attacks:ro", "./node_modules:/app/node_modules:ro"]
     read_only: true
     user: "node"
     depends_on: { cypherfy-backend: { condition: service_healthy } }

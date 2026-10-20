@@ -8,7 +8,7 @@ import { EventEmitter } from 'node:events';
 import { createRemediation } from '../../src/services/remediation.service.js';
 import { createAckService } from '../../src/services/ack.service.js';
 import { rules } from '../../src/rules/index.js';
-import { CONFIG, IP_A, T0, fakeRedis, silentLog, socketRate, withRules } from '../helpers.js';
+import { IP_A, T0, fakeRedis, silentLog, socketRate, withRules } from '../helpers.js';
 
 const r3b = rules.find((r) => r.id === 'R3b');
 const r3a = rules.find((r) => r.id === 'R3a');
@@ -89,7 +89,7 @@ test('R3a in enforce: throttle_socket carries the configured rate and duration',
 });
 
 test('shadow mode publishes nothing', async () => {
-  const { redis, out } = await run({ config: CONFIG }); // R3 rules ship in shadow
+  const { redis, out } = await run({ config: withRules({ R3a: { mode: 'shadow' }, R3b: { mode: 'shadow' } }) });
   assert.deepEqual(out.actions.map((a) => a.result), ['skipped_shadow', 'skipped_shadow']);
   assert.deepEqual(redis.published, []);
 });
