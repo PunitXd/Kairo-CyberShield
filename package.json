@@ -23,7 +23,9 @@
     "test": "npm test --workspaces --if-present && node --test \"scripts/*.test.js\"",
     "dashboard:dev": "npm run dev -w frontend",
     "dashboard:build": "npm run build -w frontend",
-    "pipeline:init": "node pipeline/bin/kairoInit.js"
+    "pipeline:init": "node pipeline/bin/kairoInit.js",
+    "deployer": "node --env-file=.env scripts/deployer.js",
+    "deploy": "bash scripts/deploy.sh"
   },
   "devDependencies": {
     "kairo-schema": "*",

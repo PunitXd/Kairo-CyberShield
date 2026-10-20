@@ -36,3 +36,20 @@ test('stale only after 10 s; actions need a live Defender and Redis', () => {
   assert.match(actionBlockedReason('reconnecting', ok), /Defender is unreachable/);
   assert.match(actionBlockedReason('live', redisDown), /Redis is unreachable/);
 });
+
+test('R4 frozen: critical rollback band, after the Defender and Redis bands', () => {
+  const status = { redis: 'ok', rollback: { frozen: true, frozenReason: 'rollback budget used' }, cypherfy: { ok: true }, hooks: [{ alive: true }] };
+  const band = systemBanner({ connection: 'live', status }, clock);
+  assert.equal(band.kind, 'rollback');
+  assert.equal(band.tone, 'critical');
+  assert.match(band.text, /^Rollback paused \(rollback budget used\)\./);
+  assert.equal(systemBanner({ connection: 'live', status: { ...status, redis: 'down' } }, clock).kind, 'redis');
+});
+
+test('hooks silent: CypherFy healthy but no live hooks heartbeat → warning band (BRIEF D5)', () => {
+  const band = systemBanner({ connection: 'live', status: { redis: 'ok', cypherfy: { ok: true }, hooks: [{ inst: 'cypherfy-backend-1', alive: false }] } }, clock);
+  assert.equal(band.kind, 'hooks');
+  assert.equal(band.text, 'No events from CypherFy for 60 s. Check that cypherfy-hooks is loaded.');
+  assert.equal(systemBanner({ connection: 'live', status: { redis: 'ok', cypherfy: { ok: true }, hooks: [{ alive: true }] } }, clock), null);
+  assert.equal(systemBanner({ connection: 'live', status: { redis: 'ok', cypherfy: { ok: false }, hooks: [] } }, clock), null, 'CypherFy down is not a hooks problem');
+});

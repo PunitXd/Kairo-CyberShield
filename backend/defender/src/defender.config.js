@@ -91,6 +91,9 @@ export const readEnv = (env = process.env) => {
     // Optional here: only used to hash the operator's IP in the audit log.
     hashSecret: env.KAIRO_HASH_SECRET || null,
     github: readGithubEnv(env),
+    // R4: CypherFy's health route (probed every 10 s) and the deploy scripts' token.
+    cypherfyHealthUrl: env.CYPHERFY_HEALTH_URL || null,
+    deployToken: env.KAIRO_DEPLOY_TOKEN || null,
   };
   const missing = ['env', 'redisUrl', 'mongoUri'].filter((k) => !cfg[k]);
   if (missing.length) throw new Error(`missing environment: ${missing.join(', ')}`);

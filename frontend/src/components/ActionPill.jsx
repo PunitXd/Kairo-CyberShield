@@ -21,11 +21,13 @@ const ICON_PATHS = {
   ),
   // Triangle
   failed: <path d="M6 1.5 11 10.5H1Z M6 5v2.5" />,
+  // Counter-clockwise arrow: back to the previous version
+  rolled_back: <path d="M3.5 2.5 1.5 4.5l2 2M1.5 4.5H7a3.5 3.5 0 0 1 0 7H4" />,
   // Broken link: the connection was cut
   disconnected: <path d="M5 3.5 6.5 2a2.1 2.1 0 0 1 3 3L8 6.5M7 8.5 5.5 10a2.1 2.1 0 0 1-3-3L4 5.5M1.5 1.5l2 2M10.5 10.5l-2-2" />,
 };
 
-const VERB = { blocked: 'Blocked', throttled: 'Throttled', resolved: 'Resolved', shadow: 'Shadow', failed: 'Failed', disconnected: 'Disconnected' };
+const VERB = { blocked: 'Blocked', throttled: 'Throttled', resolved: 'Resolved', shadow: 'Shadow', failed: 'Failed', disconnected: 'Disconnected', rolled_back: 'Rolled back' };
 
 export default function ActionPill({ state, scope, reason }) {
   const detail = reason === 'kill switch' ? reason : scope ? SCOPE_LABEL[scope] ?? scope : reason;

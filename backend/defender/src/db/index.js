@@ -23,6 +23,8 @@ const connectDB = async (uri) => {
   const configVersions = db.collection('config_versions');
   // Operator allowlist (ARCH §8.2): reason and expiry; kairo:allow:* in Redis is what enforces.
   const allowlist = db.collection('allowlist');
+  // R4 deployments (ARCH §8.2): tag, prevTag, status, probe log.
+  const deployments = db.collection('deployments');
 
   await Promise.all([
     incidents.createIndex({ status: 1, detectedAt: -1 }),
@@ -39,9 +41,12 @@ const connectDB = async (uri) => {
     configVersions.createIndex({ version: -1 }),
     allowlist.createIndex({ subject: 1 }, { unique: true }),
     allowlist.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+    deployments.createIndex({ requestedAt: -1 }),
+    deployments.createIndex({ status: 1, healthyAt: -1 }),
+    deployments.createIndex({ requestedAt: 1 }, { expireAfterSeconds: DAYS_90, name: 'requested_ttl' }),
   ]);
 
-  return { client, db, incidents, actions, auditLog, pipelineRuns, configVersions, allowlist };
+  return { client, db, incidents, actions, auditLog, pipelineRuns, configVersions, allowlist, deployments };
 };
 
 export default connectDB;

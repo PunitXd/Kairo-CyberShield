@@ -11,5 +11,6 @@ import { r3aFloodSoft } from './r3aFloodSoft.rule.js';
 import { r3bFloodHard } from './r3bFloodHard.rule.js';
 import { r3cConnFlood } from './r3cConnFlood.rule.js';
 import { r3dBadPayload } from './r3dBadPayload.rule.js';
+import { r4BadDeploy } from './r4BadDeploy.rule.js';
 
-export const rules = [r1aAuthSoft, r1bCredentialStuffing, r1cAppThrottle, r2aRoomGuess, r2bRoomHit, r3aFloodSoft, r3dBadPayload, r3bFloodHard, r3cConnFlood];
+export const rules = [r1aAuthSoft, r1bCredentialStuffing, r1cAppThrottle, r2aRoomGuess, r2bRoomHit, r3aFloodSoft, r3dBadPayload, r3bFloodHard, r3cConnFlood, r4BadDeploy];

@@ -75,3 +75,12 @@ test('socket: disconnect-only incidents read Disconnected · sockets; with a blo
   assert.equal(deriveActionState({ ...cut, status: 'manually_resolved' }, [], NOW).reason, 'manually');
   assert.equal(deriveActionState({ ...cut, status: 'shadow' }, [], NOW).state, 'shadow');
 });
+
+test('R4 deploy incidents: rolling back, rolled back, paused, shadow', () => {
+  const base = { _id: 'd1', family: 'deploy', subject: 'abc1234def56', severity: 'high', status: 'open', actionsTaken: ['rollback'] };
+  assert.deepEqual(deriveActionState(base, [], 0), { state: 'rolled_back', reason: 'in progress', scope: null, expiresAt: null, keyless: true });
+  assert.equal(deriveActionState({ ...base, rolledBackAt: '2026-10-22T10:00:00Z' }, [], 0).state, 'rolled_back');
+  assert.equal(deriveActionState({ ...base, rolledBackAt: '2026-10-22T10:00:00Z' }, [], 0).scope, 'deploy');
+  assert.deepEqual(deriveActionState({ ...base, severity: 'critical', actionsTaken: [] }, [], 0).reason, 'rollback paused');
+  assert.equal(deriveActionState({ ...base, status: 'shadow', actionsTaken: [] }, [], 0).state, 'shadow');
+});

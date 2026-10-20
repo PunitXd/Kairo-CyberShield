@@ -39,6 +39,7 @@ const SOCKET_HEADLINE = {
 };
 
 const headline = (incident, action) => {
+  if (incident.family === 'deploy') return incident.summary;
   const who = formatHash('ip', incident.subject);
   const why = incident.summary;
   if (action.scope === 'socket' && SOCKET_HEADLINE[action.state]) return `${SOCKET_HEADLINE[action.state](who)} after ${why}`;

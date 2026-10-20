@@ -8,6 +8,7 @@
 //   rates.tick                          every second: counts per event type and per-rule peaks
 //   config.updated                      { configVersion } after a rule mode change or reload
 //   allowlist.changed                   { subject, on } after an allowlist add or remove
+//   deployment.updated                  a deployment's status or probe log changed (R4)
 // The handshake gets the same localhost + same-origin check as the REST API.
 
 import { Server } from 'socket.io';
@@ -27,6 +28,7 @@ export const FORWARDED_EVENTS = [
   'rates.tick',
   'config.updated',
   'allowlist.changed',
+  'deployment.updated',
 ];
 const STATUS_POLL_MS = 2000;
 

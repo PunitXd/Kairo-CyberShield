@@ -22,6 +22,9 @@ import { createKillSwitchService } from './services/killswitch.service.js';
 import { createKnockService } from './services/knock.service.js';
 import { createRuleService } from './services/rule.service.js';
 import { createAllowlistService } from './services/allowlist.service.js';
+import { createDeployService } from './services/deploy.service.js';
+import { createHealthPoller } from './pollers/health.poller.js';
+import { r4BadDeploy } from './rules/r4BadDeploy.rule.js';
 import { createGithubPoller } from './pollers/github.poller.js';
 import { createAckService } from './services/ack.service.js';
 import { createRates } from './services/rates.service.js';
@@ -106,6 +109,15 @@ const boot = async () => {
   const killSwitch = createKillSwitchService({ redis, mongo, bus, log, hasher });
   const knock = createKnockService({ redis, mongo, log, hasher });
   const allowlist = createAllowlistService({ redis, mongo, bus, log, hasher });
+  // R4 (ARCH §4.5): probe CypherFy's health; the deploy service watches each deploy.
+  const deploys = env.cypherfyHealthUrl
+    ? createDeployService({ redis, mongo, bus, log, env: env.env, getConfig: configStore.get, rule: r4BadDeploy, hasher })
+    : null;
+  const healthPoller = env.cypherfyHealthUrl
+    ? createHealthPoller({ url: env.cypherfyHealthUrl, getConfig: configStore.get, onProbe: (p) => deploys.onProbe(p), log })
+    : null;
+  if (!healthPoller) log.warn({ msg: 'health.poller_off', reason: 'CYPHERFY_HEALTH_URL is not set; R4 is off' });
+  if (deploys && !env.deployToken) log.warn({ msg: 'deploy.token_missing', reason: 'KAIRO_DEPLOY_TOKEN is not set; deploy.sh and the deployer are refused' });
   const ruleService = createRuleService({ configStore, rules, mongo, redis, bus, log, hasher });
   await ruleService.init(); // continue the config_versions history
   process.on('SIGHUP', () => ruleService.reloadFromFile());
@@ -128,6 +140,10 @@ const boot = async () => {
     allowlist,
     hasher,
     bus,
+    deploys,
+    deployToken: env.deployToken,
+    getCypherfyHealth: () => healthPoller?.last() ?? null,
+    getRollbackState: deploys ? () => deploys.rollbackState() : null,
     getConfig: configStore.get,
     getPipelineSync: pipelinePoller ? pipelinePoller.getSync : null,
     getRates: rates.history,
@@ -138,12 +154,16 @@ const boot = async () => {
   await blockWatcher.start();
   await new Promise((resolve) => httpServer.listen(env.port, env.bindHost, resolve));
   await pipelinePoller?.start();
+  await deploys?.resume();
+  healthPoller?.start();
 
   const shutdown = async (signal) => {
     log.info({ msg: 'defender.stopping', signal });
     consumer.stop();
     blockWatcher.stop();
     pipelinePoller?.stop();
+    healthPoller?.stop();
+    deploys?.stop();
     rates.stop();
     await realtime.close(); // also closes the HTTP server
     await Promise.allSettled([redis.quit(), consumerRedis.quit(), mongo.client.close()]);

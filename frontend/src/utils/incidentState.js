@@ -18,11 +18,25 @@
 // A block beats a throttle, so the R1 incident changes from Throttled to
 // Blocked in place when R1b fires (BRIEF Flow A), keyed by incident id.
 
-export const SCOPE_LABEL = { auth: 'auth', room_join: 'rooms', socket: 'sockets' };
+export const SCOPE_LABEL = { auth: 'auth', room_join: 'rooms', socket: 'sockets', deploy: 'cypherfy-backend' };
 
 const LEVEL_RANK = { block: 2, throttle: 1 };
 
+/**
+ * R4 (deploy incidents) have no keys: rolled back (the previous version is
+ * healthy again), rolling back (sent, waiting for the deployer / recovery),
+ * or paused (critical: budget used, frozen, deployer silent, no target).
+ */
+const deployActionState = (incident) => {
+  if (incident.status === 'shadow') return { state: 'shadow', scope: null, expiresAt: null, keyless: true };
+  if (incident.rolledBackAt) return { state: 'rolled_back', scope: 'deploy', expiresAt: null, keyless: true };
+  if (incident.severity === 'critical') return { state: 'failed', reason: 'rollback paused', scope: null, expiresAt: null, keyless: true };
+  if ((incident.actionsTaken ?? []).includes('rollback')) return { state: 'rolled_back', reason: 'in progress', scope: null, expiresAt: null, keyless: true };
+  return { state: 'resolved', reason: 'no action', scope: null, expiresAt: null, keyless: true };
+};
+
 export const deriveActionState = (incident, blocks, now, { killSwitch = false } = {}) => {
+  if (incident.family === 'deploy') return deployActionState(incident);
   if (incident.status === 'shadow') return { state: 'shadow', scope: null, expiresAt: null };
 
   const active = blocks

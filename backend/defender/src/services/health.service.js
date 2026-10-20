@@ -43,7 +43,7 @@ const probe = async (fn, what) => {
   }
 };
 
-export const getSystemStatus = async ({ redis, mongo, env, getConsumerStats, getRules, now = Date.now() }) => {
+export const getSystemStatus = async ({ redis, mongo, env, getConsumerStats, getRules, getCypherfyHealth, getRollbackState, now = Date.now() }) => {
   const [redisStatus, mongoStatus] = await Promise.all([
     probe(() => redis.ping(), 'redis ping'),
     probe(() => mongo.db.command({ ping: 1 }), 'mongo ping'),
@@ -69,6 +69,10 @@ export const getSystemStatus = async ({ redis, mongo, env, getConsumerStats, get
     }
   }
 
+  let rollback = null;
+  if (redisStatus === 'ok' && getRollbackState) rollback = await withTimeout(getRollbackState(), PROBE_TIMEOUT_MS, 'rollback').catch(() => null);
+  const health = getCypherfyHealth?.() ?? null;
+
   const stats = getConsumerStats?.() ?? {};
   return {
     defender: 'ok',
@@ -89,9 +93,22 @@ export const getSystemStatus = async ({ redis, mongo, env, getConsumerStats, get
     env,
     // Rule modes from rules.json, so an empty console can say what Kairo is watching.
     rules: getRules?.() ?? [],
+    // CypherFy's own /api/v1/health, probed every 10 s (R4, BRIEF D5).
+    cypherfy: health ? { ok: health.ok, httpStatus: health.httpStatus, status: health.status, error: health.error, checkedAt: health.at, failuresInARow: health.failuresInARow } : null,
+    // R4: automation frozen, and when the next automatic rollback is allowed.
+    rollback,
   };
 };
 
 /** The part of the status that changes meaningfully; used to decide when to push. */
 export const statusFingerprint = (s) =>
-  JSON.stringify({ redis: s.redis, mongo: s.mongo, killSwitch: s.killSwitch, env: s.env, rules: s.rules, hooks: s.hooks.map((h) => `${h.inst}:${h.alive}`).sort() });
+  JSON.stringify({
+    redis: s.redis,
+    mongo: s.mongo,
+    killSwitch: s.killSwitch,
+    env: s.env,
+    rules: s.rules,
+    hooks: s.hooks.map((h) => `${h.inst}:${h.alive}`).sort(),
+    cypherfy: s.cypherfy?.ok ?? null,
+    rollback: s.rollback ? [s.rollback.frozen, s.rollback.budgetAvailableAt !== null] : null,
+  });

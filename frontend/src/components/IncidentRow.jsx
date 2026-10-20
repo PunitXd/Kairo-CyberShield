@@ -50,7 +50,13 @@ export default function IncidentRow({ incident, action, now, isNew, isLatest, se
         </span>
       </td>
       <td>
-        <HashValue kind="ip" value={incident.subject} />
+        {incident.subjectKind === 'deploy' ? (
+          <span className="mono" title={`image cypherfy-backend:${incident.subject}`}>
+            deploy:{String(incident.subject).slice(0, 7)}
+          </span>
+        ) : (
+          <HashValue kind="ip" value={incident.subject} />
+        )}
       </td>
       <td>
         <ActionPill state={action.state} scope={action.scope} reason={action.reason} />

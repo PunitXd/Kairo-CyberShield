@@ -4,6 +4,9 @@
 //   Defender reconnecting (< 10 s)  normal look, no band; actions paused
 //   Defender unreachable (≥ 10 s)   warning band; values frozen, hatched, "as of"
 //   Redis unreachable               critical band; blocks hidden, feed paused
+//   R4 rollback frozen              critical band until an operator clears it
+//   Hooks silent                    warning band: CypherFy is healthy but no
+//                                   hooks heartbeat (BRIEF D5)
 //
 // With the Defender unreachable nothing it last said about Redis can be
 // trusted, so the Defender band wins.
@@ -25,9 +28,19 @@ export const actionBlockedReason = (connection, status) => {
   return null;
 };
 
+export const HOOKS_SILENT_TEXT = 'No events from CypherFy for 60 s. Check that cypherfy-hooks is loaded.';
+
+/** Hooks silent: CypherFy answers its health check, but no backend instance has a live hooks heartbeat. */
+export const hooksSilent = (status) => Boolean(status?.cypherfy?.ok) && !(status?.hooks ?? []).some((h) => h.alive);
+
 /** The band under the top bar, or null. formatClock turns ms into "14:02:11". */
 export const systemBanner = ({ connection, connectionSince, status }, formatClock) => {
   if (connection === 'down') return { kind: 'defender', tone: 'warning', text: LOST_DEFENDER(formatClock(connectionSince)) };
   if (isRedisDown(connection, status)) return { kind: 'redis', tone: 'critical', text: REDIS_DOWN_TEXT };
+  if (connection === 'live' && status?.rollback?.frozen) {
+    const why = status.rollback.frozenReason ? ` (${status.rollback.frozenReason})` : '';
+    return { kind: 'rollback', tone: 'critical', text: `Rollback paused${why}. Kairo will not roll back automatically until an operator clears it. Manual action needed.` };
+  }
+  if (connection === 'live' && hooksSilent(status)) return { kind: 'hooks', tone: 'warning', text: HOOKS_SILENT_TEXT };
   return null;
 };

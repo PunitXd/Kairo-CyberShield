@@ -13,6 +13,7 @@ export const ENFORCE_EFFECT = {
   R3b: 'disconnects the socket and blocks new sockets from the source',
   R3c: 'blocks new sockets from the source',
   R3d: 'disconnects the socket and blocks new sockets from the source',
+  R4: 'rolls cypherfy-backend back to the last healthy version after a bad deploy (once per 30 min)',
 };
 
 // The hard rules escalate from their soft step's firings.
@@ -30,10 +31,23 @@ const label = (key, ruleId) => {
       reconnectCollapseMs: 'reconnects collapsed within',
       maxPerSec: 'slowed to',
       throttleMs: 'slowed for',
+      probeEveryMs: 'probe every',
+      probeTimeoutMs: 'probe timeout',
+      failuresInARow: 'acts after',
+      graceMs: 'grace',
+      watchMs: 'watch for',
+      budgetMs: 'one rollback per',
+      ackTimeoutMs: 'deployer ack within',
+      recoverMs: 'recover within',
     }[key] ?? key
   );
 };
-const value = (key, v) => (key.endsWith('Ms') ? formatWindow(v) : key === 'maxPerSec' ? `${v} per s` : `${v}×`);
+const value = (key, v) => {
+  if (key.endsWith('Ms')) return formatWindow(v);
+  if (key === 'maxPerSec') return `${v} per s`;
+  if (key === 'failuresInARow') return `${v} failed probes`;
+  return `${v}×`;
+};
 
 /** { threshold: 5, windowMs: 60000 } → "5 in 60 s"; no threshold → "—". */
 export const thresholdText = (rule) =>

@@ -18,3 +18,10 @@ test('other settings in words; weights (objects) are left out', () => {
   assert.equal(paramsText({ maxPerSec: 3, throttleMs: 10_000 }, 'R3a'), 'slowed to 3 per s · slowed for 10 s');
   assert.equal(paramsText({}), '');
 });
+
+test('R4 settings read as a sentence', () => {
+  assert.equal(
+    paramsText({ probeEveryMs: 10_000, failuresInARow: 3, graceMs: 60_000, budgetMs: 1_800_000 }, 'R4'),
+    'probe every 10 s · acts after 3 failed probes · grace 60 s · one rollback per 30 min'
+  );
+});

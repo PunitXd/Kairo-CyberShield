@@ -49,5 +49,18 @@ export const rulesConfigSchema = z.strictObject({
     }),
     R3c: z.strictObject({ mode: zMode, threshold: zPosInt, windowMs: zPosInt, ttlMs: zPosInt, reconnectCollapseMs: zPosInt }),
     R3d: z.strictObject({ mode: zMode, threshold: zPosInt, windowMs: zPosInt }),
+    // R4 is probe-driven (ARCH §4.5, §11.4): grace after a deploy starts, N
+    // failed probes in a row, one automatic rollback per budget window.
+    R4: z.strictObject({
+      mode: zMode,
+      probeEveryMs: zPosInt.min(1000),
+      probeTimeoutMs: zPosInt,
+      failuresInARow: zPosInt,
+      graceMs: zPosInt,
+      watchMs: zPosInt,
+      budgetMs: zPosInt,
+      ackTimeoutMs: zPosInt,
+      recoverMs: zPosInt,
+    }),
   }),
 });

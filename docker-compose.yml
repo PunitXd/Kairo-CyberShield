@@ -77,6 +77,7 @@ services:
       KAIRO_RULES_PATH: /app/config/rules.json
       KAIRO_STALE_EVENT_MS: ${KAIRO_STALE_EVENT_MS:-300000}
       CYPHERFY_HEALTH_URL: http://cypherfy-backend:8000/api/v1/health
+      KAIRO_DEPLOY_TOKEN: ${KAIRO_DEPLOY_TOKEN:-}               # R4: deploy.sh + host deployer only
       LOG_LEVEL: ${LOG_LEVEL:-info}
       GITHUB_REPO: ${GITHUB_REPO:-}                    # pipeline poller; read-only
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}                  # fine-grained PAT, Actions: read; optional (pass/fail only without it)

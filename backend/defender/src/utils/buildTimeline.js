@@ -5,13 +5,15 @@
 // only; no event data is kept, so there is nothing else it could show.
 
 const ENFORCED = new Set(['applied', 'already_active']);
-const VERB = { block: 'Blocked', throttle: 'Throttled', disconnect: 'Disconnected', flag: 'Flagged', knock_mode: 'Knock mode on' };
-const SCOPE_LABEL = { auth: 'auth', room_join: 'rooms', socket: 'sockets', room_guess: 'room guessing', room: 'a room' };
+const VERB = { block: 'Blocked', throttle: 'Throttled', disconnect: 'Disconnected', flag: 'Flagged', knock_mode: 'Knock mode on', rollback: 'Rolled back' };
+const SCOPE_LABEL = { auth: 'auth', room_join: 'rooms', socket: 'sockets', room_guess: 'room guessing', room: 'a room', deploy: 'cypherfy-backend' };
 const NOT_ACTED = {
   skipped_shadow: 'Would have acted (shadow mode)',
   skipped_killswitch: 'Not acted on: kill switch is on',
   skipped_allowlist: 'Not acted on: source is allowlisted',
   skipped_cap: 'Not acted on: active-block cap reached',
+  skipped_budget: 'Not rolled back: the automatic rollback for this window was already used',
+  skipped_frozen: 'Not rolled back: automation is frozen',
   failed: 'Action failed',
 };
 
@@ -34,10 +36,14 @@ export const buildTimeline = (incident, actions, now = Date.now()) => {
       signals.add(signalKey);
       steps.push({ at: triggerTs, kind: 'signal', label: `${a.ruleId} threshold crossed`, detail: a.summary ?? undefined, ruleId: a.ruleId });
     }
-    const what = `${VERB[a.type] ?? a.type} · ${SCOPE_LABEL[a.scope] ?? a.scope}${a.ttlMs ? ` for ${minutes(a.ttlMs)}` : ''}`;
+    const what =
+      a.type === 'rollback'
+        ? `Rolled back · cypherfy-backend${a.toTag ? ` to ${a.toTag.slice(0, 7)}` : ''}`
+        : `${VERB[a.type] ?? a.type} · ${SCOPE_LABEL[a.scope] ?? a.scope}${a.ttlMs ? ` for ${minutes(a.ttlMs)}` : ''}`;
     if (a.result === 'sent') {
-      // A command to the hooks that no CypherFy instance has confirmed (yet).
-      steps.push({ at: ms(a.requestedAt), kind: 'action', label: what, detail: 'Requested; CypherFy has not confirmed it', ruleId: a.ruleId, detectMs: a.ttdMs });
+      // A command (to the hooks, or a rollback to the deployer) not confirmed yet.
+      const waitingOn = a.type === 'rollback' ? 'the deployer has not confirmed it' : 'CypherFy has not confirmed it';
+      steps.push({ at: ms(a.requestedAt), kind: 'action', label: what, detail: `Requested; ${waitingOn}`, ruleId: a.ruleId, detectMs: a.ttdMs });
     } else if (ENFORCED.has(a.result)) {
       steps.push({
         at: ms(a.appliedAt),
@@ -49,7 +55,13 @@ export const buildTimeline = (incident, actions, now = Date.now()) => {
         remediateMs: a.latencyMs,
       });
     } else {
-      steps.push({ at: ms(a.requestedAt), kind: a.result === 'failed' ? 'failed' : 'skipped', label: NOT_ACTED[a.result] ?? a.result, ruleId: a.ruleId });
+      steps.push({
+        at: ms(a.requestedAt),
+        kind: a.result === 'failed' ? 'failed' : 'skipped',
+        label: NOT_ACTED[a.result] ?? a.result,
+        ...(a.error ? { detail: a.error } : {}),
+        ruleId: a.ruleId,
+      });
     }
   }
 
@@ -66,6 +78,9 @@ export const buildTimeline = (incident, actions, now = Date.now()) => {
       steps.push({ at: lastExpiry, kind: 'pending', label: 'Expires' });
     }
   }
+
+  // R4: how the deployment ended (the incident carries the deployment's outcome in its summary).
+  if (incident.family === 'deploy' && incident.rolledBackAt) steps.push({ at: ms(incident.rolledBackAt), kind: 'resolved', label: 'Previous version healthy again' });
 
   return steps.sort((a, b) => a.at - b.at);
 };

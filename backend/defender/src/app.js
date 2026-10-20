@@ -22,6 +22,8 @@ import ratesRoutes from './routes/rates.route.js';
 import knockRoutes from './routes/knock.route.js';
 import ruleRoutes from './routes/rule.route.js';
 import allowlistRoutes from './routes/allowlist.route.js';
+import deploymentRoutes from './routes/deployment.route.js';
+import rollbackRoutes from './routes/rollback.route.js';
 import { localOnly } from './middlewares/localOnly.middleware.js';
 import { createDashboardRouter } from './middlewares/dashboard.middleware.js';
 import { errorHandler, notFoundHandler } from './middlewares/error.middleware.js';
@@ -54,6 +56,8 @@ export const createApp = (deps) => {
   app.use('/api/knock', knockRoutes);
   app.use('/api/rules', ruleRoutes);
   app.use('/api/allowlist', allowlistRoutes);
+  app.use('/api/deployments', deploymentRoutes);
+  app.use('/api/rollback', rollbackRoutes);
   app.use('/api', notFoundHandler); // unknown API paths get JSON, never the page
 
   // --- Dashboard (built into backend/defender/public by the Dockerfile) ---
