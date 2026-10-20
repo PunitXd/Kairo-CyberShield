@@ -28,7 +28,7 @@ import { KEYS } from '../defender.constant.js';
 import { toBlockItem } from './block.service.js';
 
 export const UNDO_WINDOW_MS = 30_000; // server grace; the toast itself shows for 10 s
-const SCOPE_FAMILY = { auth: 'auth', room_join: 'room' };
+const SCOPE_FAMILY = { auth: 'auth', room_join: 'room', socket: 'socket' };
 
 const parseValue = (raw) => {
   try {

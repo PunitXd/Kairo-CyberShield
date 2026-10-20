@@ -22,9 +22,17 @@ import { describeWindow } from '../../utils/formatDuration.js';
 
 const VERB = { blocked: 'Blocked', throttled: 'Throttled' };
 
+// Socket scope reads as what happened to connections, not "from sockets".
+const SOCKET_HEADLINE = {
+  blocked: (who) => `Blocked new connections from ${who}`,
+  throttled: (who) => `Slowed down a connection from ${who}`,
+  disconnected: (who) => `Disconnected a connection from ${who}`,
+};
+
 const headline = (incident, action) => {
   const who = formatHash('ip', incident.subject);
   const why = incident.summary;
+  if (action.scope === 'socket' && SOCKET_HEADLINE[action.state]) return `${SOCKET_HEADLINE[action.state](who)} after ${why}`;
   if (VERB[action.state]) return `${VERB[action.state]} ${who} from ${SCOPE_LABEL[action.scope] ?? action.scope} after ${why}`;
   if (action.heldBack) return `${VERB[action.heldBack]} ${who} from ${SCOPE_LABEL[action.scope] ?? action.scope}, held back by the kill switch, after ${why}`;
   if (action.state === 'shadow') return `Would have acted on ${who} after ${why}`;
@@ -80,7 +88,8 @@ export default function IncidentDrawer() {
 
   const action = deriveActionState(incident, blocks, now, { killSwitch });
   // Still unblockable while the kill switch holds it back: the key exists.
-  const active = action.state === 'blocked' || action.state === 'throttled' || Boolean(action.heldBack);
+  // Unblock needs a Redis key; a socket slow-down or disconnect has none.
+  const active = ((action.state === 'blocked' || action.state === 'throttled') && !action.keyless) || Boolean(action.heldBack);
   const ev = incident.evidence ?? {};
   const distinctNoun = incident.family === 'room' ? 'distinct codes' : 'distinct accounts';
 

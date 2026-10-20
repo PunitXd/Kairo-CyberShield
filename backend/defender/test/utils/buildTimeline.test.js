@@ -60,3 +60,18 @@ test('actions from before triggerEventTs was recorded fall back to appliedAt −
   const [signal] = buildTimeline({ status: 'open' }, [old], T + 1000);
   assert.equal(signal.at, T);
 });
+
+test('socket actions: a disconnect has no duration, a socket throttle says sockets, an unconfirmed command says so', () => {
+  const base = { ruleId: 'R3b', scope: 'socket', summary: '120 socket events in 10 s from one connection', triggerEventTs: T, ttdMs: 3 };
+  const disconnect = { ...base, type: 'disconnect', result: 'applied', ttlMs: null, requestedAt: d(3), appliedAt: d(18), latencyMs: 18 };
+  const slowed = { ...base, ruleId: 'R3a', type: 'throttle', result: 'applied', ttlMs: 10_000, requestedAt: d(2), appliedAt: d(9), latencyMs: 9, triggerEventTs: T - 1 };
+  const pending = { ...base, ruleId: 'R3d', type: 'disconnect', result: 'sent', ttlMs: null, requestedAt: d(30), appliedAt: null, triggerEventTs: T + 25 };
+  const steps = buildTimeline({ status: 'open' }, [disconnect, slowed, pending], T + 60_000);
+  const labels = steps.filter((s) => s.kind === 'action').map((s) => [s.label, s.detail ?? null]);
+  assert.deepEqual(labels, [
+    ['Throttled · sockets for 10 s', null],
+    ['Disconnected · sockets', null],
+    ['Disconnected · sockets', 'Requested; CypherFy has not confirmed it'],
+  ]);
+  assert.ok(!steps.some((s) => s.kind === 'skipped'), 'a sent command is not a skip');
+});

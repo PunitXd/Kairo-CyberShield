@@ -58,3 +58,20 @@ test('kill switch on: an active block reads as Shadow · kill switch, but keeps 
   });
   assert.equal(deriveActionState(incident, [], NOW, { killSwitch: true }).state, 'resolved', 'nothing active: still resolved');
 });
+
+test('socket: a slowed-down socket reads Throttled · sockets until slowedUntil, with nothing to unblock', () => {
+  const slowed = { ...incident, actionsTaken: ['socket_throttle'], slowedUntil: new Date(NOW + 8000).toISOString() };
+  assert.deepEqual(deriveActionState(slowed, [], NOW), { state: 'throttled', scope: 'socket', expiresAt: NOW + 8000, keyless: true });
+  assert.equal(deriveActionState(slowed, [], NOW + 9000).reason, 'expired', 'after it lapses');
+});
+
+test('socket: disconnect-only incidents read Disconnected · sockets; with a block key the block wins, and after it expires it is Resolved', () => {
+  const cut = { ...incident, actionsTaken: ['disconnect'] };
+  assert.deepEqual(deriveActionState(cut, [], NOW), { state: 'disconnected', scope: 'socket', expiresAt: null, keyless: true });
+  const hard = { ...incident, actionsTaken: ['socket_throttle', 'disconnect', 'block'] };
+  const socketBlock = { ...block, scope: 'socket' };
+  assert.deepEqual(deriveActionState(hard, [socketBlock], NOW), { state: 'blocked', scope: 'socket', expiresAt: NOW + 300_000 });
+  assert.equal(deriveActionState(hard, [], NOW).reason, 'expired', 'the block was the real outcome');
+  assert.equal(deriveActionState({ ...cut, status: 'manually_resolved' }, [], NOW).reason, 'manually');
+  assert.equal(deriveActionState({ ...cut, status: 'shadow' }, [], NOW).state, 'shadow');
+});

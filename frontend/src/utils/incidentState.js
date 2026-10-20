@@ -7,12 +7,18 @@
 //   only an active throttle       → Throttled · scope, countdown
 //   kill switch on, key active    → Shadow · kill switch (not enforced)
 //   closed by an operator         → Resolved · manually
+//   socket slowed down (no key)   → Throttled · sockets, until slowedUntil
+//   only ever disconnected        → Disconnected · sockets
 //   nothing active any more       → Resolved · expired
+//
+// Socket throttles and disconnects are commands to the hooks, not Redis keys,
+// so they come from the incident itself (actionsTaken, slowedUntil); those
+// states are `keyless`: there is nothing to unblock.
 //
 // A block beats a throttle, so the R1 incident changes from Throttled to
 // Blocked in place when R1b fires (BRIEF Flow A), keyed by incident id.
 
-export const SCOPE_LABEL = { auth: 'auth', room_join: 'rooms' };
+export const SCOPE_LABEL = { auth: 'auth', room_join: 'rooms', socket: 'sockets' };
 
 const LEVEL_RANK = { block: 2, throttle: 1 };
 
@@ -31,6 +37,14 @@ export const deriveActionState = (incident, blocks, now, { killSwitch = false } 
     return { state, scope: top.scope, expiresAt: top.expiresAt };
   }
   if (incident.status === 'manually_resolved') return { state: 'resolved', reason: 'manually', scope: null, expiresAt: null };
+
+  const slowedUntil = incident.slowedUntil ? Date.parse(incident.slowedUntil) : 0;
+  if (slowedUntil > now) return { state: 'throttled', scope: 'socket', expiresAt: slowedUntil, keyless: true };
+  const taken = incident.actionsTaken ?? [];
+  // A disconnect is the outcome only when nothing longer-lived (a block or throttle key) was ever applied.
+  if (taken.includes('disconnect') && !taken.includes('block') && !taken.includes('throttle')) {
+    return { state: 'disconnected', scope: 'socket', expiresAt: null, keyless: true };
+  }
   return { state: 'resolved', reason: 'expired', scope: null, expiresAt: null };
 };
 

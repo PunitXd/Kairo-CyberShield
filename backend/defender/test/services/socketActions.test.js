@@ -121,3 +121,39 @@ test('an ack with ok:false marks the action failed; unknown action ids are ignor
   assert.equal(mongo.actions.store.get(out.actions[0]._id).result, 'failed');
   await acks.handle({ ts: event.ts, type: 'kairo.ack', src: event.src, ack: { actionId: '01JAB3K5Q8ZP4M2N7R9T1V6W0X', ok: true } });
 });
+
+test('the incident records socket actions it took, and until when the socket is slowed down', async () => {
+  const updates = [];
+  const clock = { now: T0 };
+  const mongo = memoryMongo();
+  const write = mongo.incidents.updateOne;
+  mongo.incidents.updateOne = async (filter, update, opts) => (updates.push(update), write(filter, update, opts));
+  const remediation = createRemediation({ redis: fakeRedis(clock), mongo, env: 'staging', log: silentLog, now: () => clock.now });
+  const decision = {
+    severity: 'low',
+    summary: 's',
+    actions: [{ type: 'throttle', scope: 'socket', ttlMs: 10_000, params: { socketId: 'sockA', maxPerSec: 3 } }],
+    evidence: { observed: 30, threshold: 30, windowMs: 10_000 },
+    fieldsUsed: [],
+  };
+  const event = socketRate({ ts: clock.now - 5 });
+  await remediation.handle({ rule: r3a, subject: IP_A, decision, event, ruleCfg: enforce.rules.R3a, config: enforce, rules });
+  await remediation.handle({ rule: r3b, subject: IP_A, decision: hardDecision, event, ruleCfg: enforce.rules.R3b, config: enforce, rules });
+
+  assert.deepEqual(updates[0].$addToSet.actionsTaken, { $each: ['socket_throttle'] });
+  assert.equal(updates[0].$max.slowedUntil.getTime(), T0 + 10_000);
+  assert.deepEqual(updates[1].$addToSet.actionsTaken, { $each: ['disconnect', 'block'] });
+  assert.equal(updates[1].$max, undefined, 'no socket throttle in this decision');
+});
+
+test('skipped actions are not recorded as taken', async () => {
+  const updates = [];
+  const clock = { now: T0 };
+  const mongo = memoryMongo();
+  const write = mongo.incidents.updateOne;
+  mongo.incidents.updateOne = async (filter, update, opts) => (updates.push(update), write(filter, update, opts));
+  const shadow = withRules({ R3b: { mode: 'shadow' } });
+  const remediation = createRemediation({ redis: fakeRedis(clock), mongo, env: 'staging', log: silentLog, now: () => clock.now });
+  await remediation.handle({ rule: r3b, subject: IP_A, decision: hardDecision, event: socketRate({ ts: T0 }), ruleCfg: shadow.rules.R3b, config: shadow, rules });
+  assert.deepEqual(updates[0].$addToSet, { rulesFired: 'R3b' });
+});

@@ -174,6 +174,15 @@ export const createRemediation = ({ redis, mongo, env, log, bus = null, now = Da
       const allShadow = actions.every((a) => a.result === 'skipped_shadow' || a.result === 'skipped_killswitch');
       const actionIds = actions.map((a) => a._id);
       const seenAt = new Date(detectedAt);
+      // What was done, for the console: socket throttles and disconnects leave
+      // no Redis key, so the feed can't learn about them from /api/blocks.
+      const done = actions.filter((a) => ENFORCED.has(a.result) || a.result === 'sent');
+      const kinds = done.map((a) => (a.type === 'throttle' && a.scope === 'socket' ? 'socket_throttle' : a.type));
+      const slowed = done.filter((a) => a.type === 'throttle' && a.scope === 'socket').map((a) => a.requestedAt.getTime() + a.ttlMs);
+      const consoleFields = {
+        ...(kinds.length ? { $addToSet: { rulesFired: rule.id, actionsTaken: { $each: kinds } } } : { $addToSet: { rulesFired: rule.id } }),
+        ...(slowed.length ? { $max: { slowedUntil: new Date(Math.max(...slowed)) } } : {}),
+      };
 
       await writeMongo('actions', () => (actions.length ? mongo.actions.insertMany(actions) : null));
       await writeMongo('incident', async () => {
@@ -204,7 +213,7 @@ export const createRemediation = ({ redis, mongo, env, log, bus = null, now = Da
                 triggerEventTs: event.ts,
                 lastSeenAt: seenAt,
               },
-              $addToSet: { rulesFired: rule.id },
+              ...consoleFields,
               $push: { actionIds: { $each: actionIds } },
             },
             { upsert: true }
@@ -226,7 +235,7 @@ export const createRemediation = ({ redis, mongo, env, log, bus = null, now = Da
               triggerEventTs: event.ts,
               lastSeenAt: seenAt,
             },
-            $addToSet: { rulesFired: rule.id },
+            ...consoleFields,
             $push: { actionIds: { $each: actionIds } },
           }
         );

@@ -21,9 +21,11 @@ const ICON_PATHS = {
   ),
   // Triangle
   failed: <path d="M6 1.5 11 10.5H1Z M6 5v2.5" />,
+  // Broken link: the connection was cut
+  disconnected: <path d="M5 3.5 6.5 2a2.1 2.1 0 0 1 3 3L8 6.5M7 8.5 5.5 10a2.1 2.1 0 0 1-3-3L4 5.5M1.5 1.5l2 2M10.5 10.5l-2-2" />,
 };
 
-const VERB = { blocked: 'Blocked', throttled: 'Throttled', resolved: 'Resolved', shadow: 'Shadow', failed: 'Failed' };
+const VERB = { blocked: 'Blocked', throttled: 'Throttled', resolved: 'Resolved', shadow: 'Shadow', failed: 'Failed', disconnected: 'Disconnected' };
 
 export default function ActionPill({ state, scope, reason }) {
   const detail = reason === 'kill switch' ? reason : scope ? SCOPE_LABEL[scope] ?? scope : reason;

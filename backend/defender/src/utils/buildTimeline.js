@@ -5,8 +5,8 @@
 // only; no event data is kept, so there is nothing else it could show.
 
 const ENFORCED = new Set(['applied', 'already_active']);
-const VERB = { block: 'Blocked', throttle: 'Throttled' };
-const SCOPE_LABEL = { auth: 'auth', room_join: 'rooms' };
+const VERB = { block: 'Blocked', throttle: 'Throttled', disconnect: 'Disconnected' };
+const SCOPE_LABEL = { auth: 'auth', room_join: 'rooms', socket: 'sockets' };
 const NOT_ACTED = {
   skipped_shadow: 'Would have acted (shadow mode)',
   skipped_killswitch: 'Not acted on: kill switch is on',
@@ -34,11 +34,15 @@ export const buildTimeline = (incident, actions, now = Date.now()) => {
       signals.add(signalKey);
       steps.push({ at: triggerTs, kind: 'signal', label: `${a.ruleId} threshold crossed`, detail: a.summary ?? undefined, ruleId: a.ruleId });
     }
-    if (ENFORCED.has(a.result)) {
+    const what = `${VERB[a.type] ?? a.type} · ${SCOPE_LABEL[a.scope] ?? a.scope}${a.ttlMs ? ` for ${minutes(a.ttlMs)}` : ''}`;
+    if (a.result === 'sent') {
+      // A command to the hooks that no CypherFy instance has confirmed (yet).
+      steps.push({ at: ms(a.requestedAt), kind: 'action', label: what, detail: 'Requested; CypherFy has not confirmed it', ruleId: a.ruleId, detectMs: a.ttdMs });
+    } else if (ENFORCED.has(a.result)) {
       steps.push({
         at: ms(a.appliedAt),
         kind: 'action',
-        label: `${VERB[a.type] ?? a.type} · ${SCOPE_LABEL[a.scope] ?? a.scope} for ${minutes(a.ttlMs ?? 0)}`,
+        label: what,
         detail: a.result === 'already_active' ? 'Already in place; kept the longer expiry' : undefined,
         ruleId: a.ruleId,
         detectMs: a.ttdMs,

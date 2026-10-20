@@ -18,6 +18,7 @@ const FILTERS = [
   { value: null, label: 'All' },
   { value: 'auth', label: 'auth' },
   { value: 'room_join', label: 'rooms' },
+  { value: 'socket', label: 'sockets' },
 ];
 
 export default function Blocklist() {

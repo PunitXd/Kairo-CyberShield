@@ -81,6 +81,9 @@
 .pill--failed {
   background: var(--act-failed);
 }
+.pill--disconnected {
+  background: var(--act-blocked); /* a cut connection: Kairo acted; the icon and word tell it from Blocked */
+}
 .pill--shadow {
   background: transparent;
   border: 1px dashed var(--act-shadow);
