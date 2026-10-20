@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { CLEARED_COLLECTIONS, DEFENDER_URL, REDIS_URL, RESET_PATTERNS, checkResetEnv } from './demoReset.js';
+import { CLEARED_COLLECTIONS, DEFENDER_URL, REDIS_URL, RESET_PATTERNS, checkResetEnv, resettable } from './demoReset.js';
 
 const ready = { KAIRO_ENV: 'staging', KAIRO_DB_PASSWORD: 'x', DEMO_PASSWORD: 'y', DEMO_ROOM_CODE: 'ABC234' };
 
@@ -24,4 +24,11 @@ test('keeps pipeline runs and CypherFy data; deletes only Kairo state and the lo
   assert.deepEqual(RESET_PATTERNS, ['kairo:*', 'cypherfy:authbackoff:*']);
   const source = readFileSync(new URL('./demoReset.js', import.meta.url), 'utf8');
   assert.ok(!/flushall|flushdb|dropDatabase/i.test(source.replace(/never FLUSHALL/g, '')), 'no blanket wipes');
+});
+
+test('reset keeps the hooks heartbeat (live state), deletes the demo state', () => {
+  assert.deepEqual(
+    resettable(['kairo:block:auth:3e9a5b0c1d2e44c1', 'kairo:hb:hooks:cypherfy-backend-1', 'kairo:rollback:budget', 'kairo:events']),
+    ['kairo:block:auth:3e9a5b0c1d2e44c1', 'kairo:rollback:budget', 'kairo:events']
+  );
 });

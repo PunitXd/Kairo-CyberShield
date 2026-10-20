@@ -4,7 +4,7 @@
 //
 //   1. stop the Defender, so nothing writes while we clear
 //   2. in parallel:
-//        Redis  delete kairo:* (blocks, throttles, windows, strikes, events,
+//        Redis  delete kairo:* except the hooks heartbeat (blocks, throttles, windows, strikes, events,
 //               kill switch) and cypherfy:authbackoff:* (CypherFy's own login
 //               backoff, which would otherwise hide Kairo on the next run).
 //               Targeted, never FLUSHALL: CypherFy's socket state stays.
@@ -27,6 +27,10 @@ import Redis from 'ioredis';
 export const REDIS_URL = 'redis://127.0.0.1:6379'; // docker-compose.yml publishes Redis here only
 export const DEFENDER_URL = 'http://127.0.0.1:7070';
 export const RESET_PATTERNS = ['kairo:*', 'cypherfy:authbackoff:*'];
+// Live state, not demo state: the hooks heartbeat. Deleting it would make the
+// console say "No events from CypherFy" for up to 10 s after every reset.
+export const KEEP_PREFIXES = ['kairo:hb:'];
+export const resettable = (keys) => keys.filter((k) => !KEEP_PREFIXES.some((p) => k.startsWith(p)));
 export const CLEARED_COLLECTIONS = ['incidents', 'actions', 'audit_log', 'allowlist']; // never pipeline_runs or config_versions
 const TARGET_MS = 15_000;
 const n = (count, word) => `${count} ${word}${count === 1 ? '' : 's'}`;
@@ -75,7 +79,8 @@ const clearRedis = async () => {
       let deleted = 0;
       let cursor = '0';
       do {
-        const [next, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 500);
+        const [next, found] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 500);
+        const keys = resettable(found);
         if (keys.length) deleted += await redis.unlink(...keys);
         cursor = next;
       } while (cursor !== '0');
