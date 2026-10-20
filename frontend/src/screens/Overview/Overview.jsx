@@ -1,6 +1,8 @@
-// S1 Overview (BRIEF §6): KPI strip → incident feed → active blocks rail.
-// The feed explains, the rail is where you reverse. Event-rate sparklines are
-// first on the cut list (PHASES §4) and not built. The incident drawer
+// S1 Overview (BRIEF §6): KPI strip (with 5-minute sparklines) → status line →
+// Live traffic chart and activity stream (PHASES Oct 21 #2) → incident feed →
+// active blocks rail. The feed explains, the rail is where you reverse. The
+// chart and the stream show Kairo watching CypherFy even when nothing is being
+// attacked; hovering the stream pauses both. The incident drawer
 // (/incidents/:id) renders through <Outlet>, so this screen stays mounted and
 // live underneath it.
 
@@ -11,6 +13,10 @@ import KpiTile from '../../components/KpiTile.jsx';
 import IncidentRow from '../../components/IncidentRow.jsx';
 import BlockCard from '../../components/BlockCard.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
+import LiveTrafficChart from '../../components/LiveTrafficChart.jsx';
+import ActivityStream from '../../components/ActivityStream.jsx';
+import { useActivityStream } from '../../hooks/useActivityStream.js';
+import { useRates } from '../../hooks/useRates.js';
 import { useConsole } from '../../hooks/useConsole.js';
 import { useNow } from '../../hooks/useNow.js';
 import { useOverviewData } from '../../hooks/useOverviewData.js';
@@ -20,6 +26,7 @@ import { formatLatency } from '../../utils/formatDuration.js';
 import { runKpiHint, runStateLabel } from '../../utils/pipelineState.js';
 import { actionBlockedReason, isRedisDown, isStale } from '../../utils/systemState.js';
 import { formatClock } from '../../utils/formatTime.js';
+import { pickActions, pickDenials, pickTotal, sparkSeries, statusLine } from '../../utils/liveRates.js';
 
 const enforcingRules = (status) => (status?.rules ?? []).filter((r) => r.mode === 'enforce').map((r) => r.id);
 
@@ -38,6 +45,13 @@ export default function Overview() {
   const throttles = activeBlocks.length - hardBlocks.length;
   const blockedSources = new Set(hardBlocks.map((b) => b.subject)).size;
   const announcement = useFeedAnnouncer(incidents, blockedSources);
+
+  const [livePaused, setLivePaused] = useState(false);
+  const { samples, loaded: ratesLoaded } = useRates(connection, { paused: livePaused });
+  const stream = useActivityStream({ paused: livePaused });
+  const line = statusLine({ samples, status, now });
+  const lastRate = (pick) => pick(samples.at(-1) ?? {});
+  const spark = (pick, what) => (samples.length ? { values: sparkSeries(samples, pick), label: `${what}, last 5 min, per 10 s` } : undefined);
 
   const navigate = useNavigate();
   const selectedId = useMatch('/incidents/:id')?.params.id ?? null;
@@ -85,6 +99,7 @@ export default function Overview() {
           to="/blocks"
           state={redisDown && !stale ? 'empty' : tileState(hardBlocks.length)}
           asOf={connectionSince}
+          spark={spark(pickActions, 'Kairo actions')}
         />
         <KpiTile
           label="Detect p95"
@@ -92,6 +107,7 @@ export default function Overview() {
           hint={overview?.ttdP95Ms == null ? 'No detections in 24 h' : 'Trigger event → incident, 24 h'}
           state={tileState(overview?.ttdP95Ms)}
           asOf={connectionSince}
+          spark={spark(pickTotal, `Events checked, now ${lastRate(pickTotal)} per second`)}
         />
         <KpiTile
           label="Remediate p95"
@@ -99,6 +115,7 @@ export default function Overview() {
           hint={overview?.ttrP95Ms == null ? 'No actions in 24 h' : 'Trigger event → action applied, 24 h'}
           state={tileState(overview?.ttrP95Ms)}
           asOf={connectionSince}
+          spark={spark(pickDenials, 'Requests refused by Kairo')}
         />
         <KpiTile
           label="Last pipeline"
@@ -108,6 +125,16 @@ export default function Overview() {
           state={tileState(lastPipeline)}
           asOf={connectionSince}
         />
+      </div>
+
+      <p className={`live-status live-status--${stale ? 'stale' : line.tone}`} role="status">
+        <span className="live-status__dot" aria-hidden="true" />
+        {stale ? `Live data paused: Defender unreachable (${asOf})` : line.text}
+      </p>
+
+      <div className="overview-grid overview-grid--live">
+        <LiveTrafficChart samples={samples} loaded={ratesLoaded} paused={livePaused} />
+        <ActivityStream {...stream} paused={livePaused} onPause={setLivePaused} />
       </div>
 
       <div className="overview-grid">

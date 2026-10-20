@@ -64,3 +64,26 @@ test('history keeps the last 5 minutes and filters by windowSec', () => {
   assert.ok(rates.history().length <= HISTORY_SEC + 1);
   assert.equal(rates.history(10).length, 10);
 });
+
+test('enforced actions become markers on the second they landed in, each action id once', () => {
+  const { clock, rates, ticks } = setup();
+  const bus = new EventEmitter();
+  const r = createRates({ rules, getConfig: () => CONFIG, bus, now: () => clock.now, autoTick: false });
+  bus.emit('action.applied', { _id: 'A1', ruleId: 'R1a', type: 'throttle', scope: 'auth', result: 'applied' });
+  bus.emit('action.applied', { _id: 'A2', ruleId: 'R3b', type: 'disconnect', scope: 'socket', result: 'sent' });
+  bus.emit('action.applied', { _id: 'A2', ruleId: 'R3b', type: 'disconnect', scope: 'socket', result: 'applied' }); // ack
+  bus.emit('action.applied', { _id: 'A3', ruleId: 'R1b', type: 'block', scope: 'auth', result: 'skipped_shadow' });
+  bus.emit('action.applied', { _id: 'A4', ruleId: 'R2a', type: 'flag', scope: 'room_guess', result: 'applied' });
+  const first = r.tick();
+  assert.deepEqual(first.actions, [
+    { ruleId: 'R1a', type: 'throttle', scope: 'auth' },
+    { ruleId: 'R3b', type: 'disconnect', scope: 'socket' },
+  ]);
+  clock.now += 1000;
+  assert.equal(r.tick().actions, undefined, 'markers are not repeated');
+  assert.equal(r.history(300)[0].actions.length, 2, 'kept in history for a reload');
+  r.stop();
+  assert.equal(bus.listenerCount('action.applied'), 0);
+  assert.equal(ticks.length, 0);
+  rates.stop();
+});

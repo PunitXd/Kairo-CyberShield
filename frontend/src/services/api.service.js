@@ -62,3 +62,6 @@ export const getPipelineRuns = (limit = 20) => request('GET', '/api/pipeline/run
 
 /** One run → { run, sync }. */
 export const getPipelineRun = (id) => request('GET', `/api/pipeline/runs/${encodeURIComponent(id)}`);
+
+/** The rates.tick history for the live chart → { windowSec, samples } (oldest first). */
+export const getRates = (windowSec = 300) => request('GET', '/api/rates', { params: { windowSec } });
