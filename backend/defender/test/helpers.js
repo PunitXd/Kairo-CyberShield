@@ -176,3 +176,13 @@ export const appThrottled = ({ ts, ip = IP_A, account = 'a91f0c3e7b2d10f8' } = {
   src: { ipHash: ip, client: 'unknown', authed: false },
   auth: { route: 'login', status: 429, accountHash: account },
 });
+
+/** A flagged source hit a real room (denyJoin emitted room.hit_while_flagged). */
+export const roomHit = ({ ts, ip = IP_A, code = 'af47772dad981591', socketId = 'sockH' } = {}) => ({
+  ts,
+  type: 'room.hit_while_flagged',
+  env: 'staging',
+  inst: 'test-1',
+  src: { ipHash: ip, client: 'web', authed: false, socketId },
+  room: { codeHash: code, kind: 'ephemeral', via: 'socket' },
+});

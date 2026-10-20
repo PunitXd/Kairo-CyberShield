@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 6,
   "global": {
     "maxBlockMs": 3600000,
     "ladderMs": [300000, 900000, 3600000],
@@ -12,6 +12,7 @@
     "R1b": { "mode": "enforce", "threshold": 10, "windowMs": 300000, "softFiringsThreshold": 2, "softFiringsWindowMs": 900000 },
     "R1c": { "mode": "shadow", "windowMs": 300000 },
     "R2a": { "mode": "enforce", "threshold": 8, "windowMs": 60000 },
+    "R2b": { "mode": "enforce", "flagWindowMs": 600000, "knockTtlMs": 600000 },
     "R3a": { "mode": "enforce", "threshold": 30, "windowMs": 10000, "signalWeight": { "ice_candidate": 0.25, "webrtc_offer": 0.25, "webrtc_answer": 0.25 }, "maxPerSec": 3, "throttleMs": 10000 },
     "R3b": { "mode": "enforce", "threshold": 100, "windowMs": 10000, "softFiringsThreshold": 3, "softFiringsWindowMs": 300000 },
     "R3c": { "mode": "enforce", "threshold": 20, "windowMs": 60000, "ttlMs": 600000, "reconnectCollapseMs": 5000 },

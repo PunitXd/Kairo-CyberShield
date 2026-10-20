@@ -24,7 +24,7 @@ export const createRuleRunner = ({ rules, windows, getConfig, onDecision, log })
 
       const windowKey = rule.windowKey?.(event) ?? subject;
       windows.add(rule.id, windowKey, rule.measure(event, ruleCfg), event.ts, ruleCfg.windowMs);
-      const decision = rule.evaluate(windows.view(windowKey, event.ts, subject), ruleCfg, event);
+      const decision = rule.evaluate(windows.view(windowKey, event.ts, subject), ruleCfg, event, config);
       if (!decision) continue;
 
       windows.recordFiring(rule.id, subject, event.ts);

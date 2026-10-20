@@ -40,6 +40,10 @@ export const KEYS = {
   /** Throttle token gate: the hook allows one request per window via SET NX PX. */
   tokenGate: (scope, subject) => `kairo:tb:${checkScope(scope)}:${checkSubject(subject)}`,
   allow: (subject) => `kairo:allow:${checkSubject(subject)}`,
+  /** R2b knock mode: subject is the room's codeHash. */
+  knock: (codeHash) => `kairo:knock:${checkSubject(codeHash)}`,
+  /** R2a flag: this source was recently guessing room codes (subject = ipHash). */
+  flagRoomGuess: (subject) => `kairo:flag:roomguess:${checkSubject(subject)}`,
   strikes: (family, subject) => `kairo:strikes:${checkFamily(family)}:${checkSubject(subject)}`,
   openIncident: (family, subject) => `kairo:inc:open:${checkFamily(family)}:${checkSubject(subject)}`,
   /** Hooks heartbeat per backend instance; inst is sanitised, not a hash. */

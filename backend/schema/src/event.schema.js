@@ -76,6 +76,7 @@ export const securityEventSchema = z.discriminatedUnion('type', [
   z.strictObject({ ...eitherBase, type: z.literal('room.join.invalid'), room }),
   z.strictObject({ ...eitherBase, type: z.literal('room.join.success'), room }),
   z.strictObject({ ...eitherBase, type: z.literal('room.join.denied'), room }),
+  z.strictObject({ ...eitherBase, type: z.literal('room.hit_while_flagged'), room }),
   z.strictObject({ ...eitherBase, type: z.literal('http.denied'), http }),
   z.strictObject({ ...socketBase, type: z.literal('socket.connect') }),
   z.strictObject({ ...socketBase, type: z.literal('socket.disconnect') }),

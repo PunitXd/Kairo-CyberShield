@@ -10,6 +10,7 @@ export const EVENT_TYPES = [
   'room.join.invalid',
   'room.join.success',
   'room.join.denied',
+  'room.hit_while_flagged',
   'http.denied',
   'socket.connect',
   'socket.disconnect',

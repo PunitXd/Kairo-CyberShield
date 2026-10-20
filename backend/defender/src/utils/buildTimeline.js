@@ -5,8 +5,8 @@
 // only; no event data is kept, so there is nothing else it could show.
 
 const ENFORCED = new Set(['applied', 'already_active']);
-const VERB = { block: 'Blocked', throttle: 'Throttled', disconnect: 'Disconnected' };
-const SCOPE_LABEL = { auth: 'auth', room_join: 'rooms', socket: 'sockets' };
+const VERB = { block: 'Blocked', throttle: 'Throttled', disconnect: 'Disconnected', flag: 'Flagged', knock_mode: 'Knock mode on' };
+const SCOPE_LABEL = { auth: 'auth', room_join: 'rooms', socket: 'sockets', room_guess: 'room guessing', room: 'a room' };
 const NOT_ACTED = {
   skipped_shadow: 'Would have acted (shadow mode)',
   skipped_killswitch: 'Not acted on: kill switch is on',

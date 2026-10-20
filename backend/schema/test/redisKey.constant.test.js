@@ -25,3 +25,10 @@ test('key builders refuse raw identifiers and unknown scopes', () => {
   assert.throws(() => KEYS.strikes('everything', '3e9a5b0c1d2e44c1'));
   assert.equal(KEYS.hooksHeartbeat('a:b*c'), 'kairo:hb:hooks:a_b_c');
 });
+
+test('knock and flag keys require a 16-hex subject', () => {
+  assert.equal(KEYS.knock('af47772dad981591'), 'kairo:knock:af47772dad981591');
+  assert.equal(KEYS.flagRoomGuess('3e9a5b0c1d2e44c1'), 'kairo:flag:roomguess:3e9a5b0c1d2e44c1');
+  assert.throws(() => KEYS.knock('XK9PLM'));
+  assert.throws(() => KEYS.flagRoomGuess('172.18.0.5'));
+});

@@ -28,13 +28,13 @@ const waitFor = async (check, ms = 1500) => {
   assert.fail('timed out waiting');
 };
 
-const setup = async ({ redisMode = 'ok', env = 'staging', emitter: customEmitter, delayMs = 0 } = {}) => {
+const setup = async ({ redisMode = 'ok', env = 'staging', emitter: customEmitter, delayMs = 0, roomExists } = {}) => {
   const redis = fakeRedis({ mode: redisMode });
   const sink = fakeRedis(); // events always land here, even when the guard's Redis is down
   const logs = [];
   const log = (msg, fields) => logs.push({ msg, ...fields });
   const emitter = customEmitter ?? createEmitter({ redis: sink, timeoutMs: 50, log });
-  const ctx = { redis, emitter, hasher, env, inst: 'test-1', timeoutMs: 50, log };
+  const ctx = { redis, emitter, hasher, env, inst: 'test-1', timeoutMs: 50, log, roomExists: roomExists ?? ((code) => code.toUpperCase() === 'GOODRM') };
 
   const httpServer = createServer();
   const io = new Server(httpServer);
@@ -45,7 +45,7 @@ const setup = async ({ redisMode = 'ok', env = 'staging', emitter: customEmitter
   });
   const layer = createSocketLayer({ io, ...ctx, autoFlush: false });
   attachSocketLayer(io, () => layer);
-  const denyJoin = createJoinGuard({ layer, ...ctx });
+  const { denyJoin, knockRequired } = createJoinGuard({ layer, ...ctx });
 
   const handled = [];
   io.on('connection', (socket) => {
@@ -57,8 +57,9 @@ const setup = async ({ redisMode = 'ok', env = 'staging', emitter: customEmitter
       if (!code) return socket.emitError('INVALID_CODE', 'code and alias required');
       if (await denyJoin(socket, code)) return;
       handled.push('lookup');
-      if (code === 'GOODRM') socket.emit('room_joined', { ok: true });
-      else socket.emitError('ROOM_NOT_FOUND', 'Room not found or expired');
+      if (code !== 'GOODRM') return socket.emitError('ROOM_NOT_FOUND', 'Room not found or expired');
+      if (await knockRequired(socket, { code })) return socket.emitError('WRONG_PASSPHRASE', 'Room is locked — knock to request entry');
+      socket.emit('room_joined', { ok: true });
     });
     socket.on('send_message', async (payload) => {
       handled.push('send_message');
@@ -304,4 +305,60 @@ test('a throwing emitter never breaks CypherFy: handshake, handlers and replies 
   s.layer.flush();
   client.close();
   await waitFor(() => s.logs.some((l) => l.msg === 'kairo.hook_error'));
+});
+
+test('R2b: a flagged source that hits a real room emits room.hit_while_flagged and is rejected like a miss (never told it was real)', async (t) => {
+  const s = await setup();
+  t.after(s.close);
+  const client = await s.connect();
+  s.redis.store.set(KEYS.flagRoomGuess(IP), JSON.stringify({ kind: 'roomguess' }));
+  client.emit('join_room', { code: 'goodrm', alias: 'eve' });
+  await waitFor(() => client.errors.length === 1);
+  assert.equal(client.errors[0].code, 'ROOM_NOT_FOUND', 'indistinguishable from a miss');
+  assert.ok(!s.handled.includes('lookup'), 'rejected before CypherFy looked the room up');
+  await waitFor(() => s.ofType('room.hit_while_flagged').length === 1);
+  assert.equal(s.ofType('room.hit_while_flagged')[0].room.codeHash, hasher.roomCode('GOODRM'));
+  assert.equal(s.ofType('room.join.success').length, 0);
+  assert.ok(!JSON.stringify(s.events()).includes('GOODRM'), 'the raw code never leaves');
+});
+
+test('R2b: a flagged source guessing a non-existent code does not emit hit_while_flagged', async (t) => {
+  const s = await setup();
+  t.after(s.close);
+  const client = await s.connect();
+  s.redis.store.set(KEYS.flagRoomGuess(IP), JSON.stringify({ kind: 'roomguess' }));
+  client.emit('join_room', { code: 'badcod', alias: 'eve' });
+  await waitFor(() => client.errors.length === 1);
+  assert.equal(s.ofType('room.hit_while_flagged').length, 0);
+});
+
+test('R2b: an unflagged source never triggers roomExists or the hit event', async (t) => {
+  let checks = 0;
+  const s = await setup({ roomExists: () => (checks++, true) });
+  t.after(s.close);
+  const client = await s.connect();
+  client.emit('join_room', { code: 'goodrm', alias: 'alice' });
+  await waitFor(() => s.ofType('room.join.success').length === 1);
+  assert.equal(checks, 0, 'roomExists is only consulted for a flagged source');
+});
+
+test('knockRequired: while a room is in knock mode, a non-host joiner must knock; lifting the key lets them in', async (t) => {
+  const s = await setup();
+  t.after(s.close);
+  const client = await s.connect();
+  s.redis.store.set(KEYS.knock(hasher.roomCode('GOODRM')), JSON.stringify({ until: Date.now() + 600_000 }));
+  client.emit('join_room', { code: 'goodrm', alias: 'carol' });
+  await waitFor(() => client.errors.some((e) => e.code === 'WRONG_PASSPHRASE'));
+  assert.equal(s.ofType('room.join.success').length, 0);
+  s.redis.store.delete(KEYS.knock(hasher.roomCode('GOODRM')));
+  client.emit('join_room', { code: 'goodrm', alias: 'carol' });
+  await waitFor(() => s.ofType('room.join.success').length === 1);
+});
+
+test('knockRequired fails open when Redis is down (a locked room stays open rather than blocking CypherFy)', async (t) => {
+  const s = await setup({ redisMode: 'down' });
+  t.after(s.close);
+  const client = await s.connect();
+  client.emit('join_room', { code: 'goodrm', alias: 'dave' });
+  await waitFor(() => s.ofType('room.join.success').length === 1);
 });

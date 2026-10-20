@@ -25,6 +25,7 @@ const valid = {
   'room.join.invalid': { ...common, type: 'room.join.invalid', room: { codeHash: H, kind: 'ephemeral', via: 'http' } },
   'room.join.success': { ...onSocket, type: 'room.join.success', room: { codeHash: H, kind: 'ephemeral', via: 'socket' } },
   'room.join.denied': { ...onSocket, type: 'room.join.denied', room: { codeHash: H, kind: 'ephemeral', via: 'socket' } },
+  'room.hit_while_flagged': { ...onSocket, type: 'room.hit_while_flagged', room: { codeHash: H, kind: 'ephemeral', via: 'socket' } },
   'http.denied': { ...common, type: 'http.denied', http: { scope: 'auth', rule: 'R1b' } },
   'socket.connect': { ...onSocket, type: 'socket.connect' },
   'socket.disconnect': { ...onSocket, type: 'socket.disconnect' },

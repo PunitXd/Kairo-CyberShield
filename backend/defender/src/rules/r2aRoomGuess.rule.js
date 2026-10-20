@@ -17,7 +17,7 @@ export const r2aRoomGuess = {
   on: ['room.join.invalid'],
   subject: (e) => e.src.ipHash,
   measure: (e) => ({ value: 1, distinct: e.room.codeHash }),
-  evaluate(state, cfg, e) {
+  evaluate(state, cfg, e, config) {
     const misses = state.sum('R2a', cfg.windowMs);
     if (misses < cfg.threshold) return null;
     const codes = state.distinct('R2a', cfg.windowMs);
@@ -27,6 +27,8 @@ export const r2aRoomGuess = {
       actions: [
         { type: 'block', scope: 'room_join' }, // ttl from the escalation ladder
         ...(e?.room.via === 'socket' && e.src.socketId ? [{ type: 'disconnect', scope: 'socket', params: { socketId: e.src.socketId } }] : []),
+        // Flag the source so a hit on a real room while flagged triggers R2b.
+        ...(config?.rules?.R2b ? [{ type: 'flag', scope: 'room_guess', ttlMs: config.rules.R2b.flagWindowMs }] : []),
       ],
       evidence: { observed: misses, threshold: cfg.threshold, windowMs: cfg.windowMs, distinct: codes },
       fieldsUsed: ['ts', 'type', 'src.ipHash', 'src.socketId', 'room.codeHash', 'room.kind', 'room.via'],

@@ -23,6 +23,8 @@ export const fakeRedis = ({ mode = 'ok' } = {}) => {
     xadds,
     calls,
     mget: gate((...keys) => keys.map((k) => store.get(k) ?? null)),
+    get: gate((k) => store.get(k) ?? null),
+    del: gate((...keys) => keys.filter((k) => store.delete(k)).length),
     set: gate((key, value, ...opts) => {
       if (opts.includes('NX') && store.has(key)) return null;
       store.set(key, value);

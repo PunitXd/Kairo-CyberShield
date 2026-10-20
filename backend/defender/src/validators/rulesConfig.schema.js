@@ -31,6 +31,7 @@ export const rulesConfigSchema = z.strictObject({
     // R1c only records: there is nothing for it to enforce.
     R1c: z.strictObject({ mode: z.enum(['shadow', 'off']), windowMs: zPosInt }),
     R2a: z.strictObject({ mode: zMode, threshold: zPosInt, windowMs: zPosInt }),
+    R2b: z.strictObject({ mode: zMode, flagWindowMs: zPosInt, knockTtlMs: zPosInt.max(HOUR_MS) }),
     R3a: z.strictObject({
       mode: zMode,
       threshold: zPosInt,

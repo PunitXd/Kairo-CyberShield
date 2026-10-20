@@ -23,12 +23,14 @@ import { blockAction } from '../actions/block.action.js';
 import { throttleAction } from '../actions/throttle.action.js';
 import { disconnectAction } from '../actions/disconnect.action.js';
 import { socketThrottleAction } from '../actions/socketThrottle.action.js';
+import { flagAction } from '../actions/flag.action.js';
+import { knockModeAction } from '../actions/knockMode.action.js';
 
 const SEVERITY_RANK = { info: 0, low: 1, medium: 2, high: 3, critical: 4 };
 const ENFORCED = new Set(['applied', 'already_active']);
 const FP_STORM_TTL_MS = 10 * 60_000;
 
-export const defaultHandlers = { throttle: throttleAction, block: blockAction, disconnect: disconnectAction, socketThrottle: socketThrottleAction };
+export const defaultHandlers = { throttle: throttleAction, block: blockAction, disconnect: disconnectAction, socketThrottle: socketThrottleAction, flag: flagAction, knock_mode: knockModeAction };
 
 // A socket-scope throttle is a token bucket in the hooks, not a Redis key.
 const handlerFor = (handlers, request) =>
@@ -249,7 +251,9 @@ export const createRemediation = ({ redis, mongo, env, log, bus = null, now = Da
           const incident = mongo ? await mongo.incidents.findOne({ _id: incidentId }) : null;
           const at = now();
           for (const a of actions) {
-            if (!ENFORCED.has(a.result) || !a.expiresAt) continue;
+            // Only source-scoped block/throttle keys belong in the Blocklist and rail;
+            // flag and knock_mode are plumbing and target the room, not the source.
+            if (!ENFORCED.has(a.result) || !a.expiresAt || !['block', 'throttle'].includes(a.type)) continue;
             bus.emit(
               'block.added',
               toBlockItem({

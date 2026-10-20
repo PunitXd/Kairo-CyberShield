@@ -23,7 +23,7 @@ test('carriedBy and required follow the schema', () => {
   assert.equal(byField['src.ipHash'].required, true);
   assert.deepEqual(byField['auth.accountHash'].carriedBy, ['auth.app_throttled', 'auth.fail', 'auth.success']);
   assert.equal(byField['auth.accountHash'].required, false);
-  assert.deepEqual(byField['room.codeHash'].carriedBy, ['room.join.denied', 'room.join.invalid', 'room.join.success']);
+  assert.deepEqual(byField['room.codeHash'].carriedBy, ['room.hit_while_flagged', 'room.join.denied', 'room.join.invalid', 'room.join.success']);
   assert.equal(byField['http.scope'].type, '"auth" | "room_join" | "socket"');
   assert.deepEqual(byField['sock.counts'].carriedBy, ['socket.rate']);
   assert.equal(byField['sock.counts'].type, 'event name → packet count');

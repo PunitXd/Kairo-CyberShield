@@ -6,8 +6,10 @@
 //                      app.use(kairoMiddleware);            // after cookieParser()
 //   socket/index.js:   import { kairoSocket } from '../kairo/index.js';
 //                      kairoSocket(io);                     // after CypherFy's io.use(auth)
-//   room.handler.js,   import { denyJoin } from '../../kairo/index.js';
+//   index.js:          initKairo({ roomExists })           // roomExists(code) → boolean, for R2b
+//   room.handler.js,   import { denyJoin, knockRequired } from '../../kairo/index.js';
 //   knock.handler.js:  if (await denyJoin(socket, code)) return;   // before Room.findOne
+//   room.handler.js:   knockRequired(socket, room)                 // by the isLocked check
 //
 // Every entry point is a pass-through until initKairo() succeeds.
 // Misconfiguration (KAIRO_ENABLED not "true", missing secret or Redis URL)
@@ -49,7 +51,7 @@ const startSocketSide = () => {
   }
 };
 
-export const initKairo = async ({ env = process.env } = {}) => {
+export const initKairo = async ({ env = process.env, roomExists = null } = {}) => {
   if (started) return;
   started = true;
   const log = createLogger();
@@ -72,7 +74,7 @@ export const initKairo = async ({ env = process.env } = {}) => {
     const emitter = createEmitter({ redis, timeoutMs, log });
 
     middleware = createHttpMiddleware({ redis, emitter, hasher, env: env.KAIRO_ENV, inst, timeoutMs, log });
-    context = { redis, emitter, hasher, env: env.KAIRO_ENV, inst, timeoutMs, log };
+    context = { redis, emitter, hasher, env: env.KAIRO_ENV, inst, timeoutMs, log, roomExists };
     createHeartbeat({ redis, emitter, inst, timeoutMs, log }).beat();
     startSocketSide();
     logInfo('kairo.enabled', { env: env.KAIRO_ENV, inst, timeoutMs, enforce: env.KAIRO_ENV !== 'production' });
@@ -102,4 +104,7 @@ export const kairoSocket = (ioInstance) => {
 };
 
 /** True when Kairo refused this join (the reply is already sent); false otherwise, including on any error. */
-export const denyJoin = async (socket, code) => (joinGuard ? joinGuard(socket, code) : false);
+export const denyJoin = async (socket, code) => (joinGuard ? joinGuard.denyJoin(socket, code) : false);
+
+/** True when the room is in Kairo knock mode (R2b); CypherFy's own host/admitted logic gates who is exempt. */
+export const knockRequired = async (socket, room) => (joinGuard ? joinGuard.knockRequired(socket, room) : false);

@@ -18,7 +18,7 @@ test('R2a: 7 invalid codes in 60 s do nothing; the 8th blocks room_join (medium,
   assert.equal(rule, 'R2a');
   assert.equal(subject, IP_A);
   assert.equal(decision.severity, 'medium');
-  assert.deepEqual(decision.actions, [{ type: 'block', scope: 'room_join' }], 'no ttlMs: the ladder decides');
+  assert.deepEqual(decision.actions, [{ type: 'block', scope: 'room_join' }, { type: 'flag', scope: 'room_guess', ttlMs: 600_000 }], 'block (ladder TTL) then flag the source for R2b');
   assert.equal(decision.evidence.observed, 8);
   assert.equal(decision.evidence.threshold, 8);
   assert.equal(decision.evidence.windowMs, 60_000);
@@ -69,5 +69,6 @@ test('R2a: socket misses count together with HTTP misses; a socket crossing also
   assert.deepEqual(decisions[0].decision.actions, [
     { type: 'block', scope: 'room_join' },
     { type: 'disconnect', scope: 'socket', params: { socketId: 'sockG' } },
+    { type: 'flag', scope: 'room_guess', ttlMs: 600_000 },
   ]);
 });

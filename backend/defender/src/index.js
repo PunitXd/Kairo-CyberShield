@@ -19,6 +19,7 @@ import { getSystemStatus } from './services/health.service.js';
 import { createRealtime } from './services/realtime.service.js';
 import { createUnblockService } from './services/unblock.service.js';
 import { createKillSwitchService } from './services/killswitch.service.js';
+import { createKnockService } from './services/knock.service.js';
 import { createGithubPoller } from './pollers/github.poller.js';
 import { createAckService } from './services/ack.service.js';
 import { createRates } from './services/rates.service.js';
@@ -102,6 +103,7 @@ const boot = async () => {
   }
   const unblock = createUnblockService({ redis, mongo, bus, log, hasher });
   const killSwitch = createKillSwitchService({ redis, mongo, bus, log, hasher });
+  const knock = createKnockService({ redis, mongo, log, hasher });
   // GitHub Actions poller (ARCH §4.4); off when GITHUB_REPO is unset.
   const pipelinePoller = env.github.repo
     ? createGithubPoller({ repo: env.github.repo, token: env.github.token, pollMs: env.github.pollMs, mongo, bus, log })
@@ -116,6 +118,7 @@ const boot = async () => {
     getRules,
     unblock,
     killSwitch,
+    knock,
     getConfig: configStore.get,
     getPipelineSync: pipelinePoller ? pipelinePoller.getSync : null,
     getRates: rates.history,
