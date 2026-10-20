@@ -421,7 +421,17 @@ export const createDeployService = ({
       const current = serving
         ? { tag: serving.status === 'rolled_back' ? serving.rolledBackTo : serving.tag, deploymentId: serving._id, status: serving.status === 'rolled_back' ? 'healthy' : serving.status }
         : null;
-      return { items, current, rollback: await this.rollbackState(), health: lastProbe, watching: watch?.id ?? null, recovering: recovery?.id ?? null };
+      const c = cfg();
+      return {
+        items,
+        current,
+        rollback: await this.rollbackState(),
+        health: lastProbe,
+        watching: watch?.id ?? null,
+        recovering: recovery?.id ?? null,
+        // R4 timing, so the screen can draw the grace bar and the budget line without guessing.
+        config: { mode: c.mode, graceMs: c.graceMs, probeEveryMs: c.probeEveryMs, failuresInARow: c.failuresInARow, budgetMs: c.budgetMs, recoverMs: c.recoverMs },
+      };
     },
 
     /** Boot: resume watching a deployment that was mid-grace when the Defender restarted. */

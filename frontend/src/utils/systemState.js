@@ -42,5 +42,9 @@ export const systemBanner = ({ connection, connectionSince, status }, formatCloc
     return { kind: 'rollback', tone: 'critical', text: `Rollback paused${why}. Kairo will not roll back automatically until an operator clears it. Manual action needed.` };
   }
   if (connection === 'live' && hooksSilent(status)) return { kind: 'hooks', tone: 'warning', text: HOOKS_SILENT_TEXT };
+  // Flow D step 3: make the once-per-window limit visible after an automatic rollback.
+  if (connection === 'live' && status?.rollback?.budgetAvailableAt) {
+    return { kind: 'rollback_used', tone: 'info', text: `Automatic rollback used · next allowed at ${formatClock(status.rollback.budgetAvailableAt)}` };
+  }
   return null;
 };

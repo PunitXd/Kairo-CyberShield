@@ -1,5 +1,5 @@
 // Left nav, 200 px (BRIEF §6). Labels per decision D12. Incidents and Rules &
-// safety joined on Oct 21 (PHASES §3); Deployments follows.
+// safety joined on Oct 21, Deployments on Oct 22 (PHASES §3).
 
 import { NavLink } from 'react-router';
 
@@ -8,6 +8,7 @@ export const NAV_ITEMS = [
   { to: '/incidents', label: 'Incidents', end: true },
   { to: '/blocks', label: 'Blocklist' },
   { to: '/pipeline', label: 'Pipeline' },
+  { to: '/deployments', label: 'Deployments' },
   { to: '/rules', label: 'Rules' },
   { to: '/privacy', label: 'Privacy' },
 ];

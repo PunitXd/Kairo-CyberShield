@@ -1643,3 +1643,143 @@ details[open] > .job__summary::after {
   white-space: nowrap;
   color: var(--text-2);
 }
+
+/* ---- Deployments (S7, PHASES Oct 22 #4) ---- */
+
+.banner--info {
+  background: var(--surface-2);
+  border-bottom-color: var(--border-strong);
+  color: var(--text-1);
+}
+.deploy-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+.deploy-current__tag {
+  font-size: var(--type-heading);
+  font-weight: 600;
+}
+.deploy-current__meta,
+.deploy-current__health {
+  margin-top: var(--space-2);
+  color: var(--text-2);
+}
+.deploy-current__health--bad {
+  color: var(--sev-high);
+}
+.deploy-budget {
+  border-left: 3px solid var(--border-strong);
+}
+.deploy-budget--warning {
+  border-left-color: var(--sev-medium);
+}
+.deploy-budget--critical {
+  border-left-color: var(--sev-critical);
+}
+.deploy-budget__text {
+  font-weight: 600;
+}
+.deploy-budget--critical .deploy-budget__text::before {
+  content: '▲ ';
+  color: var(--sev-critical);
+}
+.deploy-budget__hint {
+  margin: var(--space-2) 0 var(--space-3);
+  font-size: var(--type-label);
+  color: var(--text-3);
+}
+.deploys__prev {
+  display: block;
+  font-size: var(--type-label);
+  color: var(--text-3);
+}
+.deploys__serving {
+  margin-left: var(--space-2);
+  font-size: var(--type-label);
+  font-weight: 600;
+  color: var(--act-resolved);
+}
+.deploys__serving--bad {
+  color: var(--sev-high);
+}
+.deploys__serving::before {
+  content: '● ';
+}
+.deploys__incident {
+  font-size: var(--type-label);
+}
+.deploy-pill {
+  display: inline-block;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: var(--type-label);
+  font-weight: 600;
+  color: var(--act-pill-text);
+  background: var(--sev-info);
+  white-space: nowrap;
+}
+.deploy-pill--healthy {
+  background: var(--act-resolved);
+}
+.deploy-pill--deploying {
+  background: var(--sev-low);
+}
+.deploy-pill--unhealthy {
+  background: var(--sev-high);
+}
+.deploy-pill--rolled_back {
+  background: var(--act-rolled-back);
+}
+.deploy-pill--failed {
+  background: var(--act-failed);
+}
+.grace {
+  position: relative;
+  display: block;
+  margin-top: var(--space-1);
+  width: 160px;
+  height: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.grace__bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent-16);
+  border-right: 2px solid var(--accent);
+}
+.grace__label {
+  position: relative;
+  padding-left: var(--space-2);
+  font-size: 11px;
+  color: var(--text-2);
+}
+.probe-strip {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 14px;
+}
+.probe-strip--empty {
+  font-size: var(--type-label);
+  color: var(--text-3);
+}
+.probe-strip__dot {
+  width: 8px;
+  height: 6px; /* failed: a short bar (shape, not colour alone) */
+  border-radius: 2px;
+  background: var(--sev-critical);
+}
+.probe-strip__dot--ok {
+  height: 14px;
+  background: var(--act-resolved);
+}
+
+@media (max-width: 1279px) {
+  .deploy-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

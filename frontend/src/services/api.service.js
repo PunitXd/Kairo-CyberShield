@@ -84,3 +84,12 @@ export const addAllowlist = (body) => request('POST', '/api/allowlist', { body }
 
 /** Take a source off the allowlist → { removed }. */
 export const removeAllowlist = (subject) => request('DELETE', `/api/allowlist/${encodeURIComponent(subject)}`);
+
+/** Deployments, the version serving now, rollback state and R4 timing → { items, current, rollback, health, config }. */
+export const getDeployments = (limit = 20) => request('GET', '/api/deployments', { params: { limit } });
+
+/** Operator: roll this deployment back to its previous healthy version → { requested, toTag }. */
+export const rollbackDeployment = (id) => request('POST', `/api/deployments/${encodeURIComponent(id)}/rollback`, { body: {} });
+
+/** Operator: clear the R4 freeze → { changed }. */
+export const unfreezeRollback = () => request('POST', '/api/rollback/unfreeze', { body: {} });

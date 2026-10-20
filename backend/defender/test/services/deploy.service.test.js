@@ -158,6 +158,9 @@ test('a deploy is published to the deployer, waits out the grace window, then tu
   const doc = await t.mongo.deployments.findOne({ _id: d._id });
   assert.equal(doc.status, 'healthy');
   assert.equal(doc.probeLog.length, 3);
+  const listed = await t.svc.list();
+  assert.equal(listed.current.tag, TAG_GOOD);
+  assert.deepEqual(listed.config, { mode: 'enforce', graceMs: 60_000, probeEveryMs: 10_000, failuresInARow: 3, budgetMs: 1_800_000, recoverMs: 90_000 });
   // The next deploy rolls back to this one.
   const next = await t.svc.create({ tag: TAG_BAD });
   assert.equal(next.prevTag, TAG_GOOD);

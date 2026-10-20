@@ -53,3 +53,8 @@ test('hooks silent: CypherFy healthy but no live hooks heartbeat → warning ban
   assert.equal(systemBanner({ connection: 'live', status: { redis: 'ok', cypherfy: { ok: true }, hooks: [{ alive: true }] } }, clock), null);
   assert.equal(systemBanner({ connection: 'live', status: { redis: 'ok', cypherfy: { ok: false }, hooks: [] } }, clock), null, 'CypherFy down is not a hooks problem');
 });
+
+test('after an automatic rollback, an info band says when the next one is allowed (Flow D step 3)', () => {
+  const band = systemBanner({ connection: 'live', status: { redis: 'ok', rollback: { frozen: false, budgetAvailableAt: 123 }, cypherfy: { ok: true }, hooks: [{ alive: true }] } }, clock);
+  assert.deepEqual(band, { kind: 'rollback_used', tone: 'info', text: 'Automatic rollback used · next allowed at 14:02:11' });
+});
